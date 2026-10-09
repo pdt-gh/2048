@@ -1,0 +1,2442 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>2048</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<style>
+/* Layout: board-first game column beside a quiet stats rail; rail drops below the board on phones. */
+:root {
+  --bg: #e9edf0;
+  --surface: #f6f8f9;
+  --fg: #1f2a33;
+  --muted: #5d6b76;
+  --line: #d3dadf;
+  --board: #3a4752;
+  --cell: #4b5964;
+  --accent: #1e7f78;
+  --accent-fg: #ffffff;
+  --goal: #c2304f;
+  --danger: #c2304f;
+  --overlay: rgba(233, 237, 240, 0.88);
+  --display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body: "Figtree", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151b20; --surface: #1c242a; --fg: #e4eaee; --muted: #93a1ab; --line: #2c3740;
+    --board: #2a343c; --cell: #36424b; --accent: #5fbfae; --accent-fg: #0f1a19; --goal: #e8607a; --danger: #e8607a;
+    --overlay: rgba(21, 27, 32, 0.88); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151b20; --surface: #1c242a; --fg: #e4eaee; --muted: #93a1ab; --line: #2c3740;
+  --board: #2a343c; --cell: #36424b; --accent: #5fbfae; --accent-fg: #0f1a19; --goal: #e8607a; --danger: #e8607a;
+  --overlay: rgba(21, 27, 32, 0.88); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 24px 40px; }
+.wrap { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 500px) minmax(0, 1fr); gap: 32px; align-items: start; }
+@media (max-width: 840px) { .wrap { grid-template-columns: minmax(0, 1fr); max-width: 500px; } }
+
+.game { display: grid; gap: 16px; min-width: 0; }
+
+/* Header */
+.head { display: flex; justify-content: space-between; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+.brand { display: grid; gap: 4px; min-width: 0; }
+.eyebrow { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; color: var(--muted); }
+.goal-num { font-family: var(--display); font-weight: 800; font-size: clamp(56px, 15vw, 84px); line-height: 0.9; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: var(--goal); }
+.goal-num.long { font-size: clamp(38px, 10vw, 56px); }
+.goal-num .join { color: var(--muted); font-weight: 500; padding-inline: 0.12em; }
+.tagline { color: var(--muted); font-size: 14px; }
+.scores { display: flex; gap: 8px; }
+.score-box { background: var(--board); color: #e9eef1; border-radius: 10px; padding: 6px 14px 8px; min-width: 84px; text-align: center; position: relative; }
+.score-box .lbl { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #b4c0c8; font-weight: 600; }
+.score-box .val { font-family: var(--display); font-weight: 700; font-size: 22px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.gain { position: absolute; left: 0; right: 0; top: 18px; font-family: var(--display); font-weight: 700; color: var(--accent); pointer-events: none; animation: rise 700ms ease-out forwards; }
+@keyframes rise { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-34px); } }
+
+/* Controls */
+.controls { display: flex; gap: 8px; align-items: stretch; flex-wrap: wrap; }
+.mode-btn { flex: 1 1 180px; appearance: none; font: inherit; cursor: pointer; text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; }
+.mode-btn .cur { display: grid; line-height: 1.2; min-width: 0; }
+.mode-btn .cur b { font-family: var(--display); font-weight: 700; font-size: 16px; }
+.mode-btn .cur span { font-size: 12px; color: var(--muted); }
+.mode-btn .caret { font-size: 13px; color: var(--muted); font-weight: 600; white-space: nowrap; }
+.btn { appearance: none; border: 0; font: inherit; font-weight: 600; cursor: pointer; border-radius: 10px; padding: 10px 16px; background: var(--accent); color: var(--accent-fg); transition: filter 120ms; }
+.btn:hover { filter: brightness(1.08); }
+.btn.ghost { background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+.btn.ghost[aria-expanded="true"] { background: var(--board); color: #fff; border-color: var(--board); }
+.btn.small { padding: 6px 12px; font-size: 13px; }
+.btn.warn { background: var(--danger); color: #fff; }
+.btn:disabled { opacity: 0.5; cursor: default; filter: none; }
+button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Panels (mode picker, settings, save codes) */
+.panel-box { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 14px; }
+.pgroup { display: grid; gap: 8px; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); gap: 6px; }
+.pick { appearance: none; font: inherit; cursor: pointer; text-align: left; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; padding: 8px 10px; display: grid; gap: 1px; line-height: 1.25; }
+.pick:hover { border-color: var(--muted); }
+.pick b { font-family: var(--display); font-weight: 800; font-size: 20px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.pick b.long { font-size: 16px; }
+.pick .nm { font-size: 13px; font-weight: 600; }
+.pick .meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pick[aria-pressed="true"] { background: var(--board); border-color: var(--board); }
+.pick[aria-pressed="true"] .nm { color: #fff; }
+.pick[aria-pressed="true"] .meta { color: #b4c0c8; }
+
+.setting { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+.setting label { font-weight: 600; }
+.setting .sub { display: block; font-size: 13px; color: var(--muted); font-weight: 400; }
+.switch { position: relative; width: 46px; height: 26px; flex: none; }
+.switch input { position: absolute; inset: 0; opacity: 0; margin: 0; cursor: pointer; }
+.switch span { position: absolute; inset: 0; border-radius: 99px; background: var(--line); transition: background 150ms; pointer-events: none; }
+.switch span::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: transform 150ms; }
+.switch input:checked + span { background: var(--accent); }
+.switch input:checked + span::after { transform: translateX(20px); }
+.switch input:focus-visible + span { outline: 3px solid var(--accent); outline-offset: 2px; }
+input[type="range"] { accent-color: var(--accent); width: min(220px, 100%); }
+select, input[type="number"] { font: inherit; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+input[type="number"] { width: 4.5em; font-variant-numeric: tabular-nums; }
+.dbg-grid { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 8px 12px; align-items: center; }
+.dbg-grid label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.dbg-grid input[type="text"] { width: 100%; font: inherit; font-variant-numeric: tabular-nums; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.dbg-grid textarea.code { min-height: 76px; }
+.dbg-wh { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.dbg-hint { font-size: 12px; color: var(--muted); }
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 6px; }
+.keybtn { appearance: none; font: inherit; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 8px; padding: 6px 10px; }
+.keybtn b { font-family: var(--mono); font-weight: 400; font-size: 13px; }
+.keybtn[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.dims { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.dims label { font-size: 13px; font-weight: 600; color: var(--muted); }
+.dims .goal-preview { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dims .goal-preview b { color: var(--fg); font-family: var(--display); }
+
+.code-block { display: grid; gap: 8px; }
+.code-block + .code-block { padding-top: 14px; border-top: 1px solid var(--line); }
+.code-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.code-head b { font-weight: 600; }
+.code-head span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+textarea.code { width: 100%; min-height: 68px; resize: vertical; font-family: var(--mono); font-size: 12px; line-height: 1.45; word-break: break-all; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); }
+.row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.status { font-size: 13px; color: var(--muted); min-height: 1.2em; }
+.status.err { color: var(--danger); }
+.status.ok { color: var(--accent); }
+
+/* Board */
+.board { --gap: 10px; --cols: 4; --rows: 4; position: relative; width: 100%; aspect-ratio: var(--ar, 1); max-width: 100%; margin-inline: auto; background: var(--board); border-radius: 14px; padding: var(--gap); container-type: inline-size; touch-action: none; user-select: none; -webkit-user-select: none; }
+.cells { display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-template-rows: repeat(var(--rows), 1fr); gap: var(--gap); height: 100%; }
+.cells div { background: var(--cell); border-radius: 7px; }
+.tiles { position: absolute; inset: var(--gap); }
+.tile { position: absolute; top: 0; left: 0; width: calc((100% - (var(--cols) - 1) * var(--gap)) / var(--cols)); height: calc((100% - (var(--rows) - 1) * var(--gap)) / var(--rows));
+  transform: translate(calc(var(--c) * (100% + var(--gap))), calc(var(--r) * (100% + var(--gap)))); transition: transform 110ms ease-in-out; z-index: 2; }
+.tile.dying { z-index: 1; }
+.tile .in { width: 100%; height: 100%; border-radius: 7px; display: grid; place-items: center; font-family: var(--display); font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums;
+  background: var(--t-bg); color: var(--t-fg); box-shadow: inset 0 -3px 0 rgba(0,0,0,0.14); }
+.tile.new .in { animation: appear 160ms 100ms ease-out backwards; }
+.tile .in.has-bars { position: relative; padding-bottom: 14%; }
+.tile .in.has-sub { position: relative; padding-bottom: 18%; }
+.tile .sub { position: absolute; left: 4%; right: 4%; bottom: 8%; text-align: center; font-family: var(--body); font-weight: 600; letter-spacing: 0; opacity: 0.78; white-space: nowrap; overflow: hidden; }
+.tile.blank .in { background: #8e9aa4; color: transparent; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.18); }
+.tile.blank .in > * { visibility: hidden; }
+.arcade { display: grid; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
+.arcade-top { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 14px; }
+.arcade-top b { font-family: var(--display); font-size: 17px; }
+.lives { color: var(--danger); letter-spacing: 2px; font-size: 16px; }
+.lives .lost { color: var(--line); }
+.stages { display: flex; gap: 4px; flex-wrap: wrap; }
+.stages span { min-width: 26px; height: 22px; padding-inline: 4px; display: grid; place-items: center; border-radius: 5px; font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums; border: 1px dashed var(--line); color: var(--muted); }
+.stages span.done { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.stages span.now { border: 2px solid var(--fg); color: var(--fg); }
+.stages span.boss { padding-inline: 8px; }
+.arcade-note { font-size: 13px; color: var(--muted); }
+.arcade-timer { font-size: 13px; font-weight: 600; color: var(--danger); font-variant-numeric: tabular-nums; }
+.bars { position: absolute; left: 11%; right: 11%; bottom: 9%; height: 9%; display: flex; gap: 4%; }
+.bars i { flex: 1; border-radius: 2px; background: rgba(0, 0, 0, 0.16); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
+.bars i.on { background: var(--c); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.55); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 18px; height: 7px; border-radius: 2px; background: var(--c); }
+.tile.merged .in { animation: pop 190ms 90ms ease-out backwards; }
+@keyframes appear { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes pop { 0% { transform: scale(0); } 55% { transform: scale(1.14); } 100% { transform: scale(1); } }
+
+/* Overlay */
+.overlay { position: absolute; inset: 0; border-radius: 14px; background: var(--overlay); display: grid; place-content: center; gap: 14px; text-align: center; z-index: 5; padding: 16px; animation: fade 300ms ease-out; }
+.overlay h2 { margin: 0; font-family: var(--display); font-weight: 800; font-size: clamp(26px, 8.5cqi, 44px); line-height: 1.05; letter-spacing: -0.02em; text-wrap: balance; }
+.overlay p { margin: 0; color: var(--muted); }
+.overlay .row { justify-content: center; }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Goal ladder */
+.ladder { display: grid; gap: 8px; }
+.ladder-head { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted); flex-wrap: wrap; }
+.rungs { display: flex; flex-wrap: wrap; gap: 5px; }
+.rung { min-width: 34px; padding: 4px 6px; text-align: center; border-radius: 6px; font-family: var(--display); font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; background: transparent; color: var(--muted); border: 1px dashed var(--line); }
+.rung.hit { background: var(--t-bg); color: var(--t-fg); border-color: transparent; }
+.rung.target { border-style: solid; border-color: var(--fg); }
+.rung.hit.target { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--t-bg); }
+
+/* Rules */
+.rules { display: grid; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.rules p { margin: 0; max-width: 62ch; }
+.examples { display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.ex { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; color: var(--muted); }
+.ex .op { font-weight: 600; }
+.ex.no .chip { opacity: 0.55; }
+.ex .x { color: var(--danger); font-weight: 700; }
+.spawn { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.hint { font-size: 13px; color: var(--muted); }
+
+/* Stats rail */
+.rail { display: grid; gap: 24px; min-width: 0; }
+.panel h3 { margin: 0 0 10px; font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; font-size: 14px; }
+th, td { text-align: right; padding: 7px 6px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th:first-child, td:first-child { text-align: left; }
+thead th { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+td .mname { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+td b { font-family: var(--display); }
+tr.current td { font-weight: 600; }
+tr.current td:first-child { box-shadow: inset 3px 0 0 var(--accent); padding-left: 10px; }
+tr.group th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; padding-top: 14px; }
+.chip { display: inline-block; min-width: 34px; text-align: center; border-radius: 5px; padding: 1px 6px; font-family: var(--display); font-weight: 700; font-size: 12px; font-variant-numeric: tabular-nums; background: var(--t-bg, transparent); color: var(--t-fg, var(--muted)); }
+.history { list-style: none; margin: 0; padding: 0; display: grid; }
+.history li { display: grid; grid-template-columns: 1fr auto auto; gap: 10px; align-items: center; padding: 9px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.history .when { font-size: 12px; color: var(--muted); }
+.history .pts { font-family: var(--display); font-weight: 700; font-size: 17px; }
+.badge { font-size: 11px; font-weight: 600; letter-spacing: 0.04em; border-radius: 99px; padding: 2px 8px; border: 1px solid var(--line); color: var(--muted); }
+.badge.won { background: var(--accent); color: var(--accent-fg); border-color: transparent; }
+.history li.empty { display: block; color: var(--muted); font-size: 14px; padding: 12px 0; border-top: 1px solid var(--line); }
+.reset { justify-self: start; font-size: 13px; padding: 6px 10px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .tile { transition: none; }
+  .tile .in, .overlay, .gain { animation: none !important; }
+}
+</style>
+
+<div class="wrap">
+  <main class="game">
+    <div class="head">
+      <div class="brand">
+        <div class="eyebrow" id="modeLine">Powers of 2 · 4×4</div>
+        <div class="goal-num" id="goalNum">2048</div>
+        <div class="tagline" id="tagline">Slide and merge tiles to reach 2048.</div>
+      </div>
+      <div class="scores">
+        <div class="score-box" id="scoreBox"><div class="lbl">Score</div><div class="val" id="score">0</div></div>
+        <div class="score-box"><div class="lbl">Best</div><div class="val" id="best">0</div></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="mode-btn" id="modeBtn" aria-expanded="false" aria-controls="picker">
+        <span class="cur"><b id="modeBtnGoal">2048</b><span id="modeBtnName">Regular</span></span>
+        <span class="caret" id="modeBtnCaret">Change mode</span>
+      </button>
+      <button class="btn ghost" id="savesBtn" aria-expanded="false" aria-controls="saves">Save code</button>
+      <button class="btn ghost" id="settingsBtn" aria-expanded="false" aria-controls="settings">Settings</button>
+      <button class="btn ghost" id="debugBtn" aria-expanded="false" aria-controls="debugPanel" hidden>Debug</button>
+      <button class="btn" id="newGame">New game</button>
+    </div>
+
+    <div class="panel-box" id="picker" hidden></div>
+
+    <div class="panel-box" id="settings" hidden>
+      <div class="eyebrow">Settings</div>
+      <div class="setting">
+        <label for="soundOn">Sound effects<span class="sub">Slides, merges, wins and game overs</span></label>
+        <span class="switch"><input type="checkbox" id="soundOn" role="switch" checked><span></span></span>
+      </div>
+      <div class="setting">
+        <label for="volume">Volume</label>
+        <input type="range" id="volume" min="0" max="100" value="60">
+      </div>
+      <div class="setting">
+        <label for="soundSet">Sound style<span class="sub">Pick one to hear a sample</span></label>
+        <select id="soundSet">
+          <option value="original">Original</option>
+          <option value="chip">Chiptune</option>
+          <option value="chimes">Chimes</option>
+          <option value="wood">Wood blocks</option>
+          <option value="bubbles">Bubbles</option>
+        </select>
+      </div>
+      <div class="setting" id="debugRow" hidden>
+        <label>Debug mode<span class="sub">Unlocked. The <code>debugMode</code> variable is on.</span></label>
+        <span class="badge won">On</span>
+      </div>
+    </div>
+
+    <div class="panel-box" id="debugPanel" hidden>
+      <div class="eyebrow">Debug · <span id="dbgMode"></span></div>
+      <div class="dbg-grid" id="dbgFields">
+        <label for="dbgW">Board</label>
+        <div class="dbg-wh" id="dbgWH">
+          <input type="number" id="dbgW" min="2" max="10" aria-label="Width"><span>wide ×</span>
+          <input type="number" id="dbgH" min="2" max="10" aria-label="Height"><span>tall</span>
+        </div>
+        <label for="dbgGoals">Goals</label>
+        <input type="text" id="dbgGoals" placeholder="2048, 4096" autocomplete="off">
+        <label for="dbgNeed">Win when</label>
+        <select id="dbgNeed"><option value="any">any goal is made</option><option value="all">every goal is made</option></select>
+        <label for="dbgRungs">Rungs</label>
+        <input type="text" id="dbgRungs" placeholder="2, 4, 8, 16" autocomplete="off">
+        <label for="dbgSpawn">New tiles</label>
+        <div><textarea class="code" id="dbgSpawn" placeholder="2: 90&#10;4: 10"></textarea>
+          <div class="dbg-hint">One tile per line as value: chance. Chances are scaled to add up to 100%. A letter after the value sets a tile type, like 4g for garbage.</div></div>
+      </div>
+      <div class="row">
+        <button class="btn small" id="dbgApply">Apply and start a new game</button>
+        <button class="btn small ghost" id="dbgReset">Reset this mode</button>
+      </div>
+      <div class="status" id="dbgStatus" role="status"></div>
+      <div class="eyebrow">Keyboard controls</div>
+      <div class="keys" id="keyBtns"></div>
+      <div class="row"><button class="btn small ghost" id="keysReset">Reset controls</button></div>
+    </div>
+
+    <div class="panel-box" id="saves" hidden>
+      <div class="code-block">
+        <div class="code-head"><b>This game</b><span id="curInfo"></span></div>
+        <textarea class="code" id="curCode" readonly aria-label="Save code for this game"></textarea>
+        <div class="row">
+          <button class="btn small" id="copyCur">Copy code</button>
+          <button class="btn small ghost" id="saveCur" hidden>Save as .txt</button>
+        </div>
+      </div>
+      <div class="code-block" id="prevBlock" hidden>
+        <div class="code-head"><b>Before your last New game</b><span id="prevInfo"></span></div>
+        <textarea class="code" id="prevCode" readonly aria-label="Save code for the previous game"></textarea>
+        <div class="row">
+          <button class="btn small" id="restorePrev">Restore this game</button>
+          <button class="btn small ghost" id="copyPrev">Copy code</button>
+          <button class="btn small ghost" id="savePrev" hidden>Save as .txt</button>
+        </div>
+      </div>
+      <div class="code-block">
+        <div class="code-head"><b>Load a game</b><span>Paste a code or open a saved .txt file</span></div>
+        <textarea class="code" id="loadCode" aria-label="Paste a save code" placeholder="Paste a save code here"></textarea>
+        <div class="row">
+          <button class="btn small" id="loadBtn">Load code</button>
+          <button class="btn small ghost" id="openTxt">Open .txt file</button>
+          <input type="file" id="fileIn" accept=".txt,text/plain" hidden>
+        </div>
+        <div class="status" id="saveStatus" role="status"></div>
+      </div>
+    </div>
+
+    <div class="dims" id="dims" hidden>
+      <label for="dimW">Width</label><input type="number" id="dimW" min="2" max="8" value="4">
+      <label for="dimH">Height</label><input type="number" id="dimH" min="2" max="8" value="4">
+      <span class="goal-preview" id="dimGoal"></span>
+      <button class="btn small" id="dimApply">Start this size</button>
+    </div>
+
+    <div class="arcade" id="arcadeHud" hidden></div>
+
+    <div class="board" id="board" aria-label="Game board" tabindex="0">
+      <div class="cells" id="cells"></div>
+      <div class="tiles" id="tiles"></div>
+      <div class="overlay" id="overlay" hidden></div>
+    </div>
+
+    <div class="ladder">
+      <div class="ladder-head"><span class="eyebrow" id="ladderTitle">Goal ladder</span><span id="ladderNote"></span></div>
+      <div class="rungs" id="rungs"></div>
+    </div>
+
+    <section class="rules">
+      <div class="eyebrow">How tiles merge</div>
+      <p id="ruleText"></p>
+      <div class="examples" id="examples"></div>
+      <div class="legend" id="legend" hidden></div>
+      <div class="spawn" id="spawnText"></div>
+    </section>
+    <div class="hint" id="hint">Arrow keys or WASD on a keyboard. Swipe on the board on a phone. Each mode keeps its own game, so you can switch and come back.</div>
+  </main>
+
+  <aside class="rail">
+    <section class="panel">
+      <div class="eyebrow">High scores</div>
+      <h3>By mode</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Mode</th><th>Best</th><th>Top tile</th><th>Games</th><th>Won</th></tr></thead>
+          <tbody id="statsBody"></tbody>
+        </table>
+      </div>
+    </section>
+    <section class="panel">
+      <div class="eyebrow">Recent games</div>
+      <h3 id="histTitle">Regular · 2048</h3>
+      <ul class="history" id="history"></ul>
+    </section>
+    <button class="btn ghost reset" id="resetStats">Clear scores</button>
+  </aside>
+</div>
+
+<script>
+(() => {
+/* ---------- number helpers ---------- */
+const isPow = (v, b) => { if (!Number.isInteger(v) || v < 1) return false; while (v % b === 0) v /= b; return v === 1; };
+const val5 = v => { let k = 0; while (v % 5 === 0) { v /= 5; k++; } return k; };
+const strip = (v, b) => { while (v % b === 0) v /= b; return v; };
+const isPrime = n => { if (n < 2) return false; for (let i = 2; i * i <= n; i++) if (n % i === 0) return false; return true; };
+const isSquare = n => { const r = Math.round(Math.sqrt(n)); return r * r === n; };
+const powLadder = (b, start, goal) => { const out = []; for (let v = start; v <= goal; v *= b) out.push(v); return out; };
+const asc = a => [...a].sort((x, y) => x - y);
+const lohi2 = (a, b) => [Math.min(a, b), Math.max(a, b)];
+const same = vals => vals.every(v => v === vals[0]);
+const sum = vals => vals.reduce((s, v) => s + v, 0);
+
+/* recipes(base, [[1,1],[1,2]], minN): tiles merge when, in any order, they equal
+   the multipliers times one power n of the base (n >= minN). Merged value = sum. */
+const recipes = (base, list, minN = 1) => {
+  const sorted = list.map(asc);
+  return vals => {
+    const s = asc(vals);
+    return sorted.some(r => {
+      if (r.length !== s.length) return false;
+      const n = s[0] / r[0];
+      return Number.isInteger(n) && n >= minN && isPow(n, base) && r.every((x, i) => x * n === s[i]);
+    });
+  };
+};
+const anyOf = (...fns) => vals => fns.some(f => f(vals));
+const exact = (...sets) => { const ss = sets.map(asc); return vals => { const s = asc(vals); return ss.some(t => t.length === s.length && t.every((x, i) => x === s[i])); }; };
+
+/* ---------- modes ----------
+   A tile is {v, k}: its value and an optional kind ("g" = garbage, or a lineage number in XXXX).
+   ok(vals) says whether plain tiles in a window merge (their sum is the new tile); a mode can
+   instead give merge(tiles) -> {v, k} | null. Larger windows are tried first, up to maxK tiles,
+   reading from the edge the tiles slide toward. */
+const P2_SPAWN = [[2, 90], [4, 10]];
+const p2 = recipes(2, [[1, 1]]);
+const p2Rule = "Two equal tiles merge into their sum, so every tile is a power of 2.";
+const p2Ex = g => [[[2, 2], 4], [[4, 4], 8], [[g / 2, g / 2], g], [[2, 4], 0]];
+const p2Mode = (id, name, goal, size, extra = {}) => ({ id, group: `Powers of 2 · ${size}×${size}`, name, family: "Powers of 2", goals: [goal], size,
+  spawn: P2_SPAWN, maxK: 2, ok: p2, ladder: powLadder(2, 2, goal), rule: p2Rule, examples: p2Ex(goal), ...extra });
+
+const P3_OK = recipes(3, [[1, 1], [1, 2]]);
+const P3_RULE = "A power of 3 merges with an equal tile (n + n) or with its double (n + 2n). Two doubles don't merge.";
+const p3Mode = (id, name, goal, size) => ({ id, group: "Powers of 3", name, family: "Powers of 3", goals: [goal], size,
+  spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, ok: P3_OK, ladder: powLadder(3, 1, goal), rule: P3_RULE,
+  examples: [[[1, 1], 2], [[1, 2], 3], [[3, 6], 9], [[2, 2], 0]] });
+
+const DUAL_OK = anyOf(recipes(2, [[1, 1]]), recipes(3, [[1, 1], [1, 2]]));
+const DUAL_LADDER = asc([...powLadder(2, 1, 2048), ...powLadder(3, 3, 2187)]);
+const DUAL_RULE = "1 + 1 makes 2, 2 + 1 makes 3, and 2 + 2 makes 4. After that, a power of 2 merges with an equal tile (n + n), and a power of 3 merges with an equal tile (n + n) or with the tile double it (n + 2n).";
+const DUAL_EX = [[[1, 1], 2], [[2, 1], 3], [[2, 2], 4], [[4, 4], 8], [[3, 3], 6], [[3, 6], 9], [[6, 6], 0], [[3, 4], 0]];
+const DUAL_SPAWN = [[1, 85], [2, 11], [3, 2], [4, 2]];
+
+const nice12 = s => [1, 2, 3, 4, 6].includes(strip(s, 12));
+const TRI21 = [1, 3, 6, 10, 15];
+const NS = Array.from({ length: 20 }, (_, n) => n);
+// Powers of 30: a prime number of equal tiles (each m * 30^n) merge when their sum divides 30^(n+1).
+const ok30 = vals => {
+  const p = vals.length, t = vals[0];
+  if (![2, 3, 5, 7].includes(p) || !same(vals)) return false;
+  let n = 0, q = t;
+  while (q % 30 === 0) { q /= 30; n++; }
+  return 30 ** (n + 1) % (p * t) === 0;
+};
+const grow = (seed, next, limit) => { const a = seed.slice(); while (a[a.length - 1] < limit) a.push(next(a)); return [...new Set(a)]; };
+const NARAYANA = grow([1, 1, 1], a => a[a.length - 1] + a[a.length - 3], 2745);
+const TRIB = grow([1, 1, 2], a => a[a.length - 1] + a[a.length - 2] + a[a.length - 3], 1705);
+const PELL = grow([1, 2], a => 2 * a[a.length - 1] + a[a.length - 2], 2378);
+const okNarayana = ([a, b]) => {
+  const [lo, hi] = lohi2(a, b);
+  if (lo === 1 && (hi === 1 || hi === 2)) return true;
+  const i = NARAYANA.indexOf(hi);
+  return hi > 2 && i >= 2 && NARAYANA[i - 2] === lo;
+};
+const okTrib = vals => {
+  const s = asc(vals);
+  if (s.length === 2) return s[0] === 1 && s[1] === 1;
+  if (s[0] === 1 && s[1] === 1 && s[2] === 2) return true;
+  const i = TRIB.indexOf(s[2]);
+  return i >= 2 && s[1] === TRIB[i - 1] && s[0] === TRIB[i - 2];
+};
+const okPell = vals => {
+  const s = asc(vals);
+  if (s.length === 2) return s[0] === 1 && s[1] === 1;
+  const i = PELL.indexOf(s[2]);
+  return i >= 1 && s[1] === s[2] && s[0] === PELL[i - 1];
+};
+// Bicolor modes: tiles[0] is the tile nearer the wall, tiles[1] is the one sliding into it.
+const mergeBi2187 = tiles => {
+  if (tiles.length !== 2) return null;
+  const [lead, mov] = tiles, [lo, hi] = lohi2(lead.v, mov.v);
+  if (lo === 1 && hi === 1) return { v: 2 };
+  if (!isPow(lo, 3)) return null;
+  if (hi === lo) return lead.k && mov.k && lead.k !== mov.k ? { v: 2 * lo } : null;
+  if (hi === 2 * lo) return { v: 3 * lo, k: mov.v === lo ? "b" : "r" };
+  return null;
+};
+const mergeBi2584 = tiles => {
+  if (tiles.length !== 2) return null;
+  const [lead, mov] = tiles, [lo, hi] = lohi2(lead.v, mov.v);
+  if (lo === 1 && hi === 1) return { v: 2 };
+  const i = fibs.indexOf(hi);
+  if (!(i > 0 && fibs[i - 1] === lo)) return null;
+  const byDirection = mov.v > lead.v ? "c" : "y";
+  if (lead.k && mov.k) return lead.k !== mov.k ? { v: lo + hi, k: byDirection } : null;
+  return { v: lo + hi, k: lead.k || mov.k || byDirection };
+};
+// 3072: 1 + 2 -> 3, then equal tiles double. Spawns come from a shuffled box of 4x1, 4x2, 4x3.
+const ok3072 = ([a, b]) => { const [lo, hi] = lohi2(a, b); return (lo === 1 && hi === 2) || (lo === hi && lo >= 3 && isPow(lo / 3, 2)); };
+const spawn3072 = (g, m) => {
+  const top = topTile(g, m);
+  if (top >= 48 && Math.random() < 1 / 21) {
+    const opts = [];
+    for (let v = 6; v <= top / 8; v *= 2) opts.push(v);
+    if (opts.length) return [opts[Math.floor(Math.random() * opts.length)], 0];
+  }
+  if (!g.bag || !g.bag.length) {
+    g.bag = [1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3];
+    for (let i = g.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [g.bag[i], g.bag[j]] = [g.bag[j], g.bag[i]]; }
+  }
+  return [g.bag.pop(), 0];
+};
+// Plus and minus: 1+1, -1+-1; then n + n + (the opposite-sign tile one step closer to zero).
+const mergeTen = tiles => {
+  const s = tiles.map(t => t.v);
+  if (s.length === 2) return s[0] === s[1] && Math.abs(s[0]) === 1 ? { v: 2 * s[0] } : null;
+  for (let a = 0; a < 3; a++) {
+    const o = s.filter((_, j) => j !== a), n = o[0];
+    if (o[1] === n && Math.abs(n) > 1 && s[a] === -(n - Math.sign(n))) return { v: n + Math.sign(n) };
+  }
+  return null;
+};
+const isPerfPow = (v, minY = 2) => {
+  if (v < 4) return false;
+  for (let y = minY; 2 ** y <= v; y++) {
+    const x = Math.round(v ** (1 / y));
+    if ([x - 1, x, x + 1].some(c => c >= 2 && c ** y === v)) return true;
+  }
+  return false;
+};
+const FM1 = grow([1, 2], a => a[a.length - 1] + a[a.length - 2] + 1, 2583);
+const okFm1 = vals => {
+  const s = asc(vals);
+  if (s.length === 2) return s[0] === 1 && s[1] === 1;
+  const i = FM1.indexOf(s[2]);
+  return i >= 1 && s[0] === 1 && s[1] === FM1[i - 1];
+};
+const L1762 = [...powLadder(2, 1, 1024), 1762];
+const v2 = t => { let j = 0; while (t % 2 === 0) { t /= 2; j++; } return j; };
+const L2295 = [...powLadder(2, 1, 2048), 2295];
+// Interleaved 3125: 1+1, 1+2; 2P+3P; P with 2P/5, 3P/5 or P; 7P+8P (P a power of 5).
+const okInter = ([a, b]) => {
+  const [lo, hi] = lohi2(a, b);
+  if (lo === 1 && (hi === 1 || hi === 2)) return true;
+  return NS.some(k => {
+    const P = 5 ** k;
+    return (lo === 2 * P && hi === 3 * P) || (lo === 7 * P && hi === 8 * P) ||
+      (k >= 1 && hi === P && (lo === P || lo === 2 * P / 5 || lo === 3 * P / 5));
+  });
+};
+// Primorials: squarefree tiles pair with themselves; a multiple of p^2 merges with (q - p)/2 tiles of 2/p of it
+// (one half of it when p = 2), where q is the next prime. Three-tile merges can't include a primorial.
+const PRIMES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37];
+const PRIMORIALS = [1, 2, 6, 30, 210, 2310, 30030];
+const squarefree = v => PRIMES.every(p => v % (p * p) !== 0);
+const mergePrim = tiles => {
+  const vals = tiles.map(t => t.v);
+  if (vals.length === 2 && vals[0] === vals[1] && squarefree(vals[0])) return { v: 2 * vals[0] };
+  if (vals.length >= 3 && vals.some(v => PRIMORIALS.includes(v))) return null;
+  for (let a = 0; a < vals.length; a++) {
+    const x = vals[a], rest = vals.filter((_, j) => j !== a);
+    for (let pi = 0; pi < PRIMES.length - 1; pi++) {
+      const p = PRIMES[pi], q = PRIMES[pi + 1];
+      if (x % (p * p)) continue;
+      const count = p === 2 ? 1 : (q - p) / 2, part = p === 2 ? x / 2 : 2 * x / p;
+      if (rest.length === count && rest.every(r => r === part)) return { v: x * q / p };
+    }
+  }
+  return null;
+};
+const ok1668 = vals => {
+  const s = asc(vals);
+  if (s.length === 2) return s[0] === 1 && s[1] === 1;
+  return (s[0] === s[1] && s[2] === s[0] + 1) || (s[1] === s[2] && s[0] === s[1] - 1);
+};
+const ok1429 = vals => vals.length === 3 && vals.some((x, a) => {
+  const o = vals.filter((_, j) => j !== a);
+  return Math.abs(x) === 1 && o[0] === o[1] && o[0] > 0;
+});
+// Products: a tile is a x b with k = the larger factor. Tiles with the same larger factor add their smaller factors.
+const mergeProd = tiles => {
+  if (tiles.length !== 2) return null;
+  const [A, B] = tiles;
+  if (!A.k || A.k !== B.k) return null;
+  const sumSmall = A.v / A.k + B.v / B.k;
+  return { v: sumSmall * A.k, k: Math.max(sumSmall, A.k) };
+};
+// Original 2048 tile colors.
+const ORIGINAL = (() => {
+  const base = { 2: ["#eee4da", "#776e65"], 4: ["#ede0c8", "#776e65"], 8: ["#f2b179", "#f9f6f2"], 16: ["#f59563", "#f9f6f2"],
+    32: ["#f67c5f", "#f9f6f2"], 64: ["#f65e3b", "#f9f6f2"], 128: ["#edcf72", "#f9f6f2"], 256: ["#edcc61", "#f9f6f2"],
+    512: ["#edc850", "#f9f6f2"], 1024: ["#edc53f", "#f9f6f2"], 2048: ["#edc22e", "#f9f6f2"] };
+  const out = {};
+  for (let v = 2; v <= 2 ** 20; v *= 2) { const c = base[v] || ["#3c3a32", "#f9f6f2"]; out[v] = { bg: c[0], fg: c[1] }; }
+  return out;
+})();
+const turnRatio = turn => 2 ** v2(turn);
+const gcd = (a, b) => { while (b) [a, b] = [b, a % b]; return a; };
+const isKth = (n, k) => { const r = Math.round(n ** (1 / k)); return [r - 1, r, r + 1].some(x => x >= 1 && x ** k === n); };
+// Is a/b the k-th power of a rational number (for some k in ks)?
+const ratioPow = (a, b, ks) => { const g = gcd(a, b), p = a / g, q = b / g; return ks.some(k => isKth(p, k) && isKth(q, k)); };
+const ALL_K = Array.from({ length: 39 }, (_, i) => i + 2);
+const ladderTo = goal => [...powLadder(2, 1, goal).filter(v => v < goal), goal];
+const makeBag = items => (g) => {
+  if (!g.bag || !g.bag.length) {
+    g.bag = items.map(x => Array.isArray(x) ? x : [x]).map(x => x.slice());
+    for (let i = g.bag.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [g.bag[i], g.bag[j]] = [g.bag[j], g.bag[i]]; }
+  }
+  const [v, k] = g.bag.pop();
+  return [v, 0, k];
+};
+// 2669: a merged tile remembers its two parents and its last two partners (k = "a,b;x,y").
+const memParse = k => { const [par, last] = String(k).split(";"); return { par: par.split(",").map(Number), last: last ? last.split(",").filter(Boolean).map(Number) : [] }; };
+const mergeMem = tiles => {
+  if (tiles.length !== 2) return null;
+  const [A, B] = tiles;
+  if (!A.k && !B.k) return { v: A.v + B.v, k: `${A.v},${B.v};` };
+  const orders = A.v > B.v ? [[A, B]] : B.v > A.v ? [[B, A]] : [[A, B], [B, A]];
+  for (const [big, small] of orders) {
+    if (!big.k) continue;
+    const { par, last } = memParse(big.k);
+    if (!par.includes(small.v)) continue;
+    if (last.length === 2 && last.every(x => x === small.v)) continue;
+    return { v: big.v + small.v, k: `${big.v},${small.v};${[...last, small.v].slice(-2).join(",")}` };
+  }
+  return null;
+};
+// Tiers: 2,3,4 -> 5,6,7 -> 11,12,13 ... two different tiles of one tier merge.
+const tierOf = v => { for (let n = 1; n < 40; n++) { const c = 3 * 2 ** (n - 1); if (Math.abs(v - c) <= 1) return n; if (c > v + 2) break; } return 0; };
+// Interleaved 15: 1+1, 2+2; 4P+P, 5P x3, P + P/3, 20P x3.
+const okI15 = vals => {
+  const s = asc(vals);
+  if (s.length === 2 && s[0] === s[1] && (s[0] === 1 || s[0] === 2)) return true;
+  for (let k = 0; k <= 12; k++) {
+    const P = 15 ** k;
+    if (s.length === 2 && ((s[0] === P && s[1] === 4 * P) || (k >= 1 && s[1] === P && s[0] === P / 3))) return true;
+    if (s.length === 3 && same(s) && (s[0] === 5 * P || s[0] === 20 * P)) return true;
+  }
+  return false;
+};
+// Powers of 1.5: tiles carry k = "p<n>" (1.5^n), "h<n>" (half of 1.5^n) or "d" (the /2 tile).
+const P15 = n => 1.5 ** n;
+const SUP = n => String(n).split("").map(d => "⁰¹²³⁴⁵⁶⁷⁸⁹"[d]).join("");
+const mergeP15 = tiles => {
+  if (tiles.length !== 2) return null;
+  const ka = tiles[0].k || "", kb = tiles[1].k || "";
+  if (ka === "d" && kb === "d") return { v: 2, k: "d" };
+  if (ka === "d" || kb === "d") {
+    const o = ka === "d" ? kb : ka;
+    if (o[0] !== "p") return null;
+    const n = +o.slice(1);
+    return { v: P15(n) / 2, k: "h" + n };
+  }
+  const [x, y] = [ka, kb].sort();
+  if (x[0] === "h" && y[0] === "p" && x.slice(1) === y.slice(1)) { const n = +y.slice(1); return { v: P15(n + 1), k: "p" + (n + 1) }; }
+  if (x[0] === "h" && x === y) { const n = +x.slice(1); return { v: P15(n), k: "p" + n }; }
+  return null;
+};
+// Fibonacci products: tiles a×b of Fibonacci numbers; share a factor, other factors both 1 or consecutive.
+const fibConsec = (x, y) => { const [lo, hi] = lohi2(x, y); const i = fibs.indexOf(hi); return i > 0 && fibs[i - 1] === lo; };
+const mergeFibProd = tiles => {
+  if (tiles.length !== 2 || !tiles[0].k || !tiles[1].k) return null;
+  const f = t => [t.v / t.k, t.k];
+  const [a1, b1] = f(tiles[0]), [a2, b2] = f(tiles[1]);
+  for (const sh of new Set([a1, b1])) {
+    if (sh !== a2 && sh !== b2) continue;
+    const o1 = sh === a1 ? b1 : a1, o2 = sh === a2 ? b2 : a2;
+    if ((o1 === 1 && o2 === 1) || fibConsec(o1, o2)) { const n = o1 + o2; return { v: sh * n, k: Math.max(sh, n) }; }
+  }
+  return null;
+};
+const isFibNum = v => v === 1 || fibs.includes(v);
+// x + m·x for a pair; for triples, multiples of the smallest tile.
+const pairMult = (mults) => ([a, b]) => { const [lo, hi] = lohi2(a, b); return mults.some(k => hi === k * lo); };
+const multiSet = sets => vals => { const s = asc(vals), n = s[0]; return sets.some(t => t.length === s.length && asc(t).every((k, i) => k * n === s[i])); };
+const p4Mode = (id, name, goal, ladder) => ({ id, group: "Powers of 4", name, family: "Powers of 4", goals: [goal], size: 5,
+  spawn: [[1, 85], [3, 10], [4, 5]], maxK: 3, ok: recipes(4, [[1, 1, 1], [1, 3]]), ladder: ladder || powLadder(4, 1, goal),
+  rule: "Three equal powers of 4 merge (n + n + n), and that tile merges with one more of the original (3n + n) to reach the next power. Two equal tiles alone don't merge.",
+  examples: [[[1, 1, 1], 3], [[3, 1], 4], [[4, 4, 4], 12], [[12, 4], 16], [[1, 1], 0]] });
+const xnMode = (id, name, count, top) => ({ id, group: "Powers of n", name, family: "Powers of n", goals: [top], count, label: "XXXX", size: 6,
+  spawn: [[1, 100]], maxK: 6, kinds: [2, 3, 4, 5, 6], hsl: true, merge: XN_MERGE, ladderTitle: `Tiles of ${top.toLocaleString()} or more`,
+  rule: `Any number of 1s in a row merge, and how many you merge sets the tile's color. A tile of n 1s then needs n matching tiles of the same number and color to merge again: 2 → 4 → 8, or 3 → 9 → 27. Same number, different color doesn't merge. Darker means further along. Make ${count} tiles of ${top.toLocaleString()} or more to win.`,
+  examples: [[[1, 1], [2, 2]], [[1, 1, 1], [3, 3]], [[[2, 2], [2, 2]], [4, 2]], [[[3, 3], [3, 3], [3, 3]], [9, 3]], [[1, 1, 1, 1], [4, 4]], [[[4, 4], [4, 2]], 0]] });
+const XN_MERGE = tiles => {
+  if (tiles.every(t => t.v === 1 && !t.k)) return { v: tiles.length, k: tiles.length };
+  const k = tiles[0].k;
+  if (!Number.isInteger(k) || tiles.length !== k || tiles.some(t => t.k !== k || t.v !== tiles[0].v)) return null;
+  return { v: tiles[0].v * k, k };
+};
+const GARBAGE_SPAWN = [[1, 85], [2, 10], [4, 2.5, "g", "1 in 40"], [32, 100 / 60, "g", "1 in 60"], [128, 100 / 120, "g", "1 in 120"]];
+const SQUARES_EVEN = n => Array.from({ length: n / 2 + 1 }, (_, i) => (2 * i) ** 2).filter(Boolean).concat([]).reduce((a, x) => a.concat(x), [1]);
+// 2131: the chain 1, 1, 2, 3, 6, 8, 11, 22, ... An odd tile doubles (o + o); an even tile adds the tile two steps back in the chain.
+const SEQ2131 = (() => { const q = [1, 1]; while (q.length < 26) { const x = q[q.length - 1]; q.push(x % 2 ? 2 * x : x + q[q.length - 3]); } return q; })();
+const ok2131 = ([a, b]) => {
+  const [lo, hi] = lohi2(a, b);
+  if (lo === hi) return lo % 2 === 1;
+  const i = SEQ2131.lastIndexOf(hi);
+  return hi % 2 === 0 && i >= 2 && SEQ2131[i - 2] === lo;
+};
+// Ratio-fill: below 6, two tiles merge when one divides the other and the sum is at most 6.
+// From 6 on, a tile climbs by merging with a tile 1/n of its value (n = 1..5), once per n.
+// Each tile carries its filled bars as a bitmask in k (bit n-1); all five filled = next power of 6.
+const RATIO_BARS = [
+  { n: 1, color: "#e5484d", label: "equal" },
+  { n: 2, color: "#f08c2e", label: "half" },
+  { n: 3, color: "#f2c94c", label: "third" },
+  { n: 4, color: "#3fae5a", label: "quarter" },
+  { n: 5, color: "#3b82f6", label: "fifth" }
+];
+const bitCount = x => { let c = 0; while (x) { c += x & 1; x >>= 1; } return c; };
+const RATIO_BARS_4 = [
+  { n: 2, color: "#e5484d", label: "half" },
+  { n: 3, color: "#f08c2e", label: "third" },
+  { n: 4, color: "#f2c94c", label: "quarter" },
+  { n: 5, color: "#3fae5a", label: "fifth" },
+  { n: 6, color: "#22b8cf", label: "sixth" },
+  { n: 7, color: "#3b82f6", label: "seventh" }
+];
+const makeRatio = (bars, base, small) => tiles => {
+  if (tiles.length !== 2) return null;
+  const [a, b] = tiles, full = (1 << bars.length) - 1;
+  if (a.v + b.v <= base && !a.k && !b.k) return small(a.v, b.v) ? { v: a.v + b.v } : null;
+  const orders = a.v > b.v ? [[a, b]] : b.v > a.v ? [[b, a]] : bitCount(a.k || 0) >= bitCount(b.k || 0) ? [[a, b], [b, a]] : [[b, a], [a, b]];
+  for (const [c, p] of orders) {
+    if (c.v < base || c.v % p.v) continue;
+    const idx = bars.findIndex(x => x.n === c.v / p.v);
+    const bit = 1 << idx, mask = c.k || 0;
+    if (idx < 0 || (mask & bit)) continue;
+    const next = mask | bit;
+    return next === full ? { v: c.v + p.v } : { v: c.v + p.v, k: next };
+  }
+  return null;
+};
+const mergeRatio = makeRatio(RATIO_BARS, 6, (x, y) => { const [lo, hi] = lohi2(x, y); return hi % lo === 0; });
+// 2059: a(n) = 3^n - 2^n. Pairs of equal powers of 2; three equal a(n) -> 3a(n); 3a(n) + 2^n -> a(n+1).
+const ok2059 = vals => {
+  const s = asc(vals);
+  if (s.length === 2) return (s[0] === s[1] && isPow(s[0], 2)) || NS.some(n => n >= 1 && s.includes(2 ** n) && s.includes(3 * (3 ** n - 2 ** n)) && s[0] !== s[1]);
+  return same(s) && NS.some(n => n >= 1 && s[0] === 3 ** n - 2 ** n);
+};
+// 2315: c(n) = 3^n + 2^n. 1+1, 1+1+1; three equal powers of 3; c(n) + c(n) + 3^n -> c(n+1).
+const ok2315 = vals => {
+  const s = asc(vals);
+  if (s.length === 2) return s[0] === 1 && s[1] === 1;
+  if (same(s)) return isPow(s[0], 3);
+  return s[1] === s[2] && NS.some(n => s[0] === 3 ** n && s[1] === 3 ** n + 2 ** n);
+};
+const fibs = (() => { const f = [1, 2]; while (f[f.length - 1] < 2584) f.push(f[f.length - 1] + f[f.length - 2]); return f; })();
+
+/* Factorials: a tile in [n!, (n+1)!) counts in units of n! and follows the powers-of-(n+1) rules
+   for getting from 1 unit to n+1 units. Powers of 8 (n = 7) and n >= 12 use: two tiles whose
+   units add up to at most n + 1. */
+const fact = n => { let f = 1; for (let i = 2; i <= n; i++) f *= i; return f; };
+const bandOf = v => { let n = 1; while (fact(n + 1) <= v) n++; return n; };
+const unitSets = list => { const ss = list.map(asc); return us => { const s = asc(us); return ss.some(t => t.length === s.length && t.every((x, i) => x === s[i])); }; };
+const FACT_RULES = {
+  2: unitSets([[1, 1]]),
+  3: unitSets([[1, 1], [1, 2]]),
+  4: unitSets([[1, 1, 1], [1, 3]]),
+  6: unitSets([[1, 1], [3, 3], [1, 1, 1], [2, 2, 2]]),
+  7: unitSets([[1, 1], [1, 1, 1], [2, 2], [3, 4]]),
+  9: unitSets([[1, 1, 1, 1], [4, 4, 1]]),
+  10: unitSets([[1, 1], [2, 2, 1], [5, 5]]),
+  11: unitSets([[1, 1], [1, 2], [1, 2, 3], [2, 3, 6]]),
+  12: us => same(us) && [2, 3, 4, 6, 12].includes(sum(us))
+};
+const factOk = vals => {
+  const n = bandOf(vals[0]), unit = fact(n);
+  if (vals.some(v => v < unit || v >= unit * (n + 1) || v % unit)) return false;
+  const us = vals.map(v => v / unit), rule = FACT_RULES[n + 1];
+  return rule ? rule(us) : us.length === 2 && sum(us) <= n + 1;
+};
+
+const MODES = [
+  { id: "arcade", group: "Arcade", name: "Arcade", arcade: true, family: "Arcade", goals: [128], size: 4,
+    spawn: P2_SPAWN, maxK: 2, ok: p2, ladder: powLadder(2, 2, 128), rule: p2Rule, examples: p2Ex(128) },
+  p2Mode("3x3-64", "Small, easier", 64, 3),
+  p2Mode("3x3-128", "Small board", 128, 3),
+  p2Mode("3x3-256", "Small, harder", 256, 3),
+
+  p2Mode("1024", "Easier", 1024, 4),
+  p2Mode("pair-1024", "Slightly easier", 1024, 4, { goals: [1024, 512], need: "all", together: true,
+    rule: p2Rule + " To win, have a 1024 and a 512 on the board at the same time." }),
+  p2Mode("2048", "Regular", 2048, 4),
+  p2Mode("pair-2048", "Slightly harder", 2048, 4, { goals: [2048, 1024], need: "all", together: true,
+    rule: p2Rule + " To win, have a 2048 and a 1024 on the board at the same time." }),
+  p2Mode("4096", "Harder", 4096, 4),
+  p2Mode("hs-2048", "Harder spawning", 2048, 4, { spawn: [[2, 70], [4, 10], [8, 10], [16, 10]],
+    rule: p2Rule + " New tiles are often 8s and 16s, which clutter the board." }),
+  p2Mode("orig-2048", "Original colors", 2048, 4, { special: ORIGINAL, boardBg: "#bbada0", cellBg: "rgba(238, 228, 218, 0.35)",
+    rule: p2Rule + " Tiles and board use the colors from the original 2048." }),
+  p2Mode("s4-2048", "4-spawning", 2048, 4, { spawn: [[4, 90], [8, 10]], ladder: powLadder(2, 4, 2048),
+    rule: p2Rule + " New tiles start at 4 or 8, which makes it easier.", examples: [[[4, 4], 8], [[8, 8], 16], [[1024, 1024], 2048], [[4, 8], 0]] }),
+  p2Mode("s1-2048", "1-spawning", 2048, 4, { spawn: [[1, 85], [2, 12], [4, 3]], ladder: powLadder(2, 1, 2048),
+    rule: p2Rule + " New tiles start at 1, so there's one more doubling to go.", examples: [[[1, 1], 2], [[2, 2], 4], [[1024, 1024], 2048], [[1, 2], 0]] }),
+  p2Mode("s2-2048", "Same-tile spawning", 2048, 4, { spawn: [[2, 100]],
+    rule: p2Rule + " Only 2s spawn, never 4s." }),
+  p2Mode("g-512", "Garbage", 512, 4, {
+    spawn: [[1, 85], [2, 10], [4, 2.5, "g", "1 in 40"], [32, 100 / 60, "g", "1 in 60"], [128, 100 / 120, "g", "1 in 120"]],
+    kinds: ["g"], ladder: powLadder(2, 1, 512),
+    rule: "Two equal tiles merge into their sum. Striped garbage tiles merge only with an equal garbage tile, into bigger garbage. Garbage never counts toward the goal.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[[4, "g"], [4, "g"]], [8, "g"]], [[[4, "g"], 4], 0]] }),
+  p2Mode("gv-512", "Disappearing garbage", 512, 4, { spawn: GARBAGE_SPAWN, kinds: ["g"], garbage: "vanish", ladder: powLadder(2, 1, 512),
+    rule: "Two equal tiles merge into their sum. When two equal garbage tiles meet, both disappear. Garbage never merges with normal tiles.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[[4, "g"], [4, "g"]], "gone"], [[[4, "g"], 4], 0]] }),
+  p2Mode("go-512", "Opaque garbage", 512, 6, { spawn: GARBAGE_SPAWN, kinds: ["g"], garbage: "stay", ladder: powLadder(2, 1, 512),
+    rule: "Two equal tiles merge into their sum. Garbage tiles never merge or leave, so they stay for the rest of the game.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[[4, "g"], [4, "g"]], 0], [[[4, "g"], 4], 0]] }),
+
+  p2Mode("5x5-16384", "Large, easiest", 16384, 5),
+  p2Mode("5x5-32768", "Large, easier", 32768, 5),
+  p2Mode("5x5-65536", "Large board", 65536, 5),
+  p2Mode("5x5-131072", "Large, harder", 131072, 5),
+  { id: "h-2048", group: "Powers of 2 · 5×5", name: "Harder 2048", family: "Powers of 2, harder merges", goals: [2048], size: 5,
+    spawn: [[2, 85], [4, 10], [8, 5]], maxK: 3,
+    ok: anyOf(exact([2, 2]), recipes(2, [[1, 1, 2]], 2)),
+    ladder: powLadder(2, 2, 2048),
+    rule: "Two 2s merge into a 4. Every other merge takes three tiles: two equal tiles plus one tile double their value (n + n + 2n).",
+    examples: [[[2, 2], 4], [[2, 2, 4], 8], [[4, 4, 8], 16], [[8, 8, 16], 32], [[4, 4], 0]] },
+  p2Mode("dyn-2048", "Dynamic goals", 2048, 4, { group: "Powers of 2 · any size", dyn: true,
+    rule: p2Rule + " Pick a width and a height from 2 to 8 above the board. The goal grows with the number of cells: 2048 on 4×4, 128 on 3×3, 65,536 on 5×5." }),
+
+  p3Mode("p3-729", "Lower goal", 729, 4),
+  { ...p3Mode("p3-1458", "Slightly lower", 1458, 4), ladder: [...powLadder(3, 1, 729), 1458] },
+  p3Mode("b3-2187", "Powers of 3", 2187, 4),
+  { ...p3Mode("p3-4374", "Slightly higher", 4374, 4), ladder: [...powLadder(3, 1, 2187), 4374] },
+  p3Mode("p3-6561-4", "Higher goal", 6561, 4),
+  { ...p3Mode("it-2187", "Intermediate tracking", 2187, 4), ladderTitle: "Ladder with the doubles",
+    ladder: asc([...powLadder(3, 1, 2187), ...powLadder(3, 1, 729).map(v => 2 * v)]) },
+  { id: "bc-2187", group: "Powers of 3", name: "Bicolor", family: "Powers of 3, two colors", goals: [2187], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 2.5, "r"], [3, 2.5, "b"]], maxK: 2, merge: mergeBi2187,
+    kinds: ["r", "b"], kindHues: { r: 2, b: 214 }, kindNames: { r: "red", b: "blue" },
+    ladder: powLadder(3, 1, 2187),
+    rule: "A power of 3 merges with its double. The new tile is blue when the smaller tile slides into its double, and red when the double slides into the smaller tile. Two equal powers of 3 (other than two 1s) merge only when one is red and one is blue. In the examples, the first tile is the one sliding in.",
+    examples: [[[1, 1], 2], [[1, 2], [3, "b"]], [[2, 1], [3, "r"]], [[[3, "r"], [3, "b"]], 6], [[[3, "b"], 6], [9, "b"]], [[6, [3, "r"]], [9, "r"]], [[[3, "r"], [3, "r"]], 0]] },
+  p3Mode("p3-6561", "Larger, easier", 6561, 5),
+  p3Mode("p3-19683", "Larger board", 19683, 5),
+  p3Mode("p3-59049", "Larger, harder", 59049, 5),
+  { id: "3m-243", group: "Powers of 3", name: "3-merge", family: "Powers of 3, three at a time", goals: [243], size: 5,
+    spawn: [[1, 90], [3, 10]], maxK: 3, ok: recipes(3, [[1, 1, 1]]),
+    ladder: powLadder(3, 1, 243),
+    rule: "Only three equal tiles in a row merge (n + n + n). Pairs never merge.",
+    examples: [[[1, 1, 1], 3], [[3, 3, 3], 9], [[27, 27, 27], 81], [[1, 1], 0]] },
+  { id: "3m-2187", group: "Powers of 3", name: "Larger 3-merge", family: "Powers of 3, three at a time", goals: [2187], size: 6,
+    spawn: [[1, 90], [3, 10]], maxK: 3, ok: recipes(3, [[1, 1, 1]]),
+    ladder: powLadder(3, 1, 2187),
+    rule: "Only three equal tiles in a row merge (n + n + n). Pairs never merge.",
+    examples: [[[1, 1, 1], 3], [[3, 3, 3], 9], [[243, 243, 243], 729], [[1, 1], 0]] },
+
+  p4Mode("p4-256", "Lower goal", 256),
+  p4Mode("p4-768", "Slightly lower", 768, [...powLadder(4, 1, 256), 768]),
+  { id: "b4-1024", group: "Powers of 4", name: "Powers of 4", family: "Powers of 4", goals: [1024], size: 5,
+    spawn: [[1, 85], [3, 10], [4, 5]], maxK: 3, ok: recipes(4, [[1, 1, 1], [1, 3]]),
+    ladder: powLadder(4, 1, 1024),
+    rule: "Three equal powers of 4 merge (n + n + n), and that tile merges with one more of the original (3n + n) to reach the next power. Two equal tiles alone don't merge.",
+    examples: [[[1, 1, 1], 3], [[3, 1], 4], [[4, 4, 4], 12], [[12, 4], 16], [[1, 1], 0]] },
+  p4Mode("p4-3072", "Slightly higher", 3072, [...powLadder(4, 1, 1024), 3072]),
+  p4Mode("p4-4096", "Higher goal", 4096),
+  { id: "h5-3125", group: "Other bases", name: "Harder powers of 5", family: "Powers of 5, harder merges", goals: [3125], size: 5,
+    spawn: [[1, 90], [3, 10]], maxK: 3, ok: recipes(5, [[1, 1, 1], [3, 1, 1]]),
+    ladder: powLadder(5, 1, 3125),
+    rule: "For a power of 5 (n): three equal tiles merge (n + n + n), and that tile merges with two more of the original (3n + n + n).",
+    examples: [[[1, 1, 1], 3], [[3, 1, 1], 5], [[5, 5, 5], 15], [[15, 5, 5], 25], [[3, 3], 0], [[1, 1], 0]] },
+  { id: "i5-3125", group: "Other bases", name: "Interleaved 5s", family: "Powers of 5, interleaved", goals: [3125], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, ok: okInter,
+    ladder: powLadder(5, 1, 3125),
+    rule: "1 + 1 and 2 + 1 merge. For a power of 5 (P): double plus triple merges (2P + 3P), P merges with itself or with two-fifths or three-fifths of itself, and 7P merges with 8P.",
+    examples: [[[1, 1], 2], [[2, 3], 5], [[5, 2], 7], [[5, 3], 8], [[7, 8], 15], [[10, 15], 25], [[2, 2], 0]] },
+  { id: "o5-3125", group: "Other bases", name: "Other powers of 5", family: "Powers of 5, no triples", goals: [3125], size: 4,
+    spawn: [[1, 80], [2, 10], [3, 4], [4, 4], [5, 2]], maxK: 2,
+    ok: ([a, b]) => { const [lo, hi] = lohi2(a, b), k = Math.min(val5(a), val5(b)); return a + b <= 5 ** (k + 1) && !(isPow(lo, 5) && hi === 3 * lo); },
+    ladder: powLadder(5, 1, 3125),
+    rule: "Two tiles merge when both are multiples of the same power of 5 and their sum doesn't go past the next power of 5, except a power of 5 never merges with triple itself.",
+    examples: [[[1, 3], 4], [[2, 3], 5], [[1, 1], 2], [[5, 15], 0], [[1, 3], 4], [[10, 15], 25], [[3, 3], 0]] },
+  { id: "b5-3125", group: "Other bases", name: "Powers of 5", family: "Powers of 5", goals: [3125], size: 4,
+    spawn: [[1, 80], [2, 8], [3, 6], [4, 4], [5, 2]], maxK: 2,
+    ok: ([a, b]) => { const k = Math.min(val5(a), val5(b)); return a + b <= 5 ** (k + 1); },
+    ladder: powLadder(5, 1, 3125),
+    rule: "Two tiles merge when both are multiples of the same power of 5 and their sum doesn't go past the next power of 5.",
+    examples: [[[1, 3], 4], [[2, 3], 5], [[5, 15], 20], [[3, 3], 0], [[5, 1], 0]] },
+  { id: "b6-1296", group: "Other bases", name: "Powers of 6", family: "Powers of 6", goals: [1296], size: 5,
+    spawn: [[1, 80], [2, 12], [3, 6], [6, 2]], maxK: 3, ok: recipes(6, [[1, 1], [3, 3], [1, 1, 1], [2, 2, 2]]),
+    ladder: powLadder(6, 1, 1296),
+    rule: "For a power of 6 (n): two equal tiles merge at n or 3n, and three equal tiles merge at n or 2n. When three in a row can merge, the three go first.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[3, 3], 6], [[2, 2, 2], 6], [[2, 2], 0]] },
+  { id: "rf-1296", group: "Other bases", name: "Ratio-fill", family: "Powers of 6, ratio-fill", goals: [1296], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, merge: mergeRatio, barSet: RATIO_BARS, barBase: 6, kinds: Array.from({ length: 31 }, (_, i) => i + 1),
+    ladder: powLadder(6, 1, 1296),
+    rule: "Below 6, two tiles merge when one is a multiple of the other and they add up to 6 or less. From 6 on, a tile climbs to the next power of 6 by merging once each with a tile equal to itself, half of itself, a third, a quarter and a fifth of itself, in any order. Each of those merges fills a bar on the tile, and a filled bar's merge can't happen again. Fill all five and the tile reaches the next power of 6 with empty bars.",
+    legend: RATIO_BARS.map(b => [b.color, b.label]),
+    examples: [[[1, 2], 3], [[2, 4], 6], [[6, 3], 9], [[6, 6], 12], [[12, 3], 15], [[15, 3], 18], [[18, 9], 27], [[27, 9], 36], [[2, 3], 0]] },
+  { id: "e7-2401", group: "Other bases", name: "Easier powers of 7", family: "Powers of 7, easier merges", goals: [2401], size: 5,
+    spawn: [[1, 85], [2, 12], [4, 3]], maxK: 3, ok: recipes(7, [[1, 1], [2, 2], [4, 2, 1]]),
+    ladder: powLadder(7, 1, 2401),
+    rule: "For a power of 7 (n): n + n, 2n + 2n, and 4n + 2n + n (in any order) merge. The path is 1, 2, 4, 7.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[4, 2, 1], 7], [[7, 7], 14], [[28, 14, 7], 49], [[1, 2], 0]] },
+  { id: "rf-1024", group: "Other bases", name: "Ratio-fill 1024", family: "Powers of 4, ratio-fill", goals: [1024], size: 4,
+    spawn: [[1, 85], [2, 8], [3, 5], [4, 2]], maxK: 2,
+    merge: makeRatio(RATIO_BARS_4, 4, () => true), barSet: RATIO_BARS_4, barBase: 4, kinds: Array.from({ length: 63 }, (_, i) => i + 1),
+    ladder: powLadder(4, 1, 1024),
+    rule: "Below 4, any two tiles merge if they add up to 4 or less. From 4 on, a tile climbs to the next power of 4 by merging once each with a tile that's a half, third, quarter, fifth, sixth and seventh of itself, in any order. Each merge fills its bar; a filled bar's merge can't repeat. Fill all six to reach the next power of 4.",
+    legend: RATIO_BARS_4.map(b => [b.color, b.label]),
+    examples: [[[1, 1], 2], [[1, 3], 4], [[4, 2], 6], [[6, 2], 8], [[8, 2], 10], [[10, 2], 12], [[12, 2], 14], [[14, 2], 16], [[2, 3], 0]] },
+  { id: "b7-2401", group: "Other bases", name: "Powers of 7", family: "Powers of 7", goals: [2401], size: 5,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 3, ok: recipes(7, [[1, 1], [1, 1, 1], [2, 2], [3, 4]]),
+    ladder: powLadder(7, 1, 2401),
+    rule: "For a power of 7 (n): n + n, n + n + n, 2n + 2n and 3n + 4n merge. When three in a row can merge, the three go first.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[2, 2], 4], [[3, 4], 7], [[1, 2], 0]] },
+  { id: "b9-6561", group: "Other bases", name: "Powers of 9", family: "Powers of 9", goals: [6561], size: 6,
+    spawn: [[1, 95], [4, 5]], maxK: 4, ok: recipes(9, [[1, 1, 1, 1], [4, 4, 1]]),
+    ladder: powLadder(9, 1, 6561),
+    rule: "For a power of 9 (n): four equal tiles merge (n + n + n + n), and two of those plus one more n merge to the next power (4n + 4n + n).",
+    examples: [[[1, 1, 1, 1], 4], [[4, 4, 1], 9], [[9, 9, 9, 9], 36], [[1, 1, 1], 0], [[4, 4], 0]] },
+  { id: "b10-10000", group: "Other bases", name: "Powers of 10", family: "Powers of 10", goals: [1000], size: 5,
+    spawn: [[1, 85], [2, 12], [5, 3]], maxK: 3, ok: recipes(10, [[1, 1], [2, 2, 1], [5, 5]]),
+    ladder: powLadder(10, 1, 1000),
+    rule: "For a power of 10 (n): n + n, 2n + 2n + n, and 5n + 5n merge, like coins: 1, 2, 5, 10.",
+    examples: [[[1, 1], 2], [[2, 2, 1], 5], [[5, 5], 10], [[2, 2], 0], [[1, 2], 0]] },
+  { id: "b11-14641", group: "Other bases", name: "Powers of 11", family: "Powers of 11", goals: [1331], size: 5,
+    spawn: [[1, 80], [2, 12], [3, 6], [6, 2]], maxK: 3, ok: recipes(11, [[1, 1], [1, 2], [1, 2, 3], [2, 3, 6]]),
+    ladder: powLadder(11, 1, 1331),
+    rule: "For a power of 11 (n): n + n, n + 2n, n + 2n + 3n, and 2n + 3n + 6n merge. When three in a row can merge, the three go first.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[1, 2, 3], 6], [[2, 3, 6], 11], [[2, 2], 0]] },
+  { id: "b12-1728", group: "Other bases", name: "Powers of 12", family: "Powers of 12", goals: [1728], size: 5,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4,
+    ok: vals => same(vals) && nice12(sum(vals)) && !(vals.length === 4 && strip(vals[0], 12) === 6),
+    ladder: powLadder(12, 1, 1728),
+    rule: "Two, three or four equal tiles merge when their sum is 1, 2, 3, 4, 6 or 12 times a power of 12. Four tiles that are each 6 times a power of 12 don't merge.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[2, 2, 2], 6], [[3, 3, 3, 3], 12], [[6, 6], 12], [[6, 6, 6, 6], 0], [[2, 2, 2, 2], 0]] },
+  { id: "b13-2197", group: "Other bases", name: "Powers of 13", family: "Powers of 13", goals: [2197], size: 4,
+    spawn: [[1, 85], [2, 8], [3, 5], [4, 2]], maxK: 2, ok: recipes(13, [[1, 1], [1, 2], [1, 3], [2, 4], [3, 6], [4, 9]]),
+    ladder: powLadder(13, 1, 2197),
+    rule: "For a power of 13 (n): n + n, n + 2n, n + 3n, 2n + 4n, 3n + 6n and 4n + 9n merge. The path is 1, 2, 3, 4, 6, 9, 13.",
+    examples: [[[1, 1], 2], [[1, 3], 4], [[2, 4], 6], [[3, 6], 9], [[4, 9], 13], [[2, 2], 0]] },
+  { id: "b14-2744", group: "Other bases", name: "Powers of 14", family: "Powers of 14", goals: [2744], size: 5,
+    spawn: [[1, 80], [3, 17], [7, 3]], maxK: 3, ok: recipes(14, [[1, 1, 1], [3, 3, 1], [7, 7]]),
+    ladder: powLadder(14, 1, 2744),
+    rule: "For a power of 14 (n): n + n + n, 3n + 3n + n (in any order) and 7n + 7n merge. The path is 1, 3, 7, 14.",
+    examples: [[[1, 1, 1], 3], [[3, 3, 1], 7], [[7, 7], 14], [[42, 42, 14], 98], [[3, 3], 0]] },
+  { id: "b15-3375", group: "Other bases", name: "Powers of 15", family: "Powers of 15", goals: [3375], size: 4,
+    spawn: [[1, 85], [2, 12], [4, 3]], maxK: 2, ok: recipes(15, [[1, 1], [2, 2], [4, 4], [8, 1], [9, 2], [11, 4]]),
+    ladder: powLadder(15, 1, 3375),
+    rule: "For a power of 15 (n): n + n, 2n + 2n, 4n + 4n, 8n + n, 9n + 2n and 11n + 4n merge. The path is 1, 2, 4, 8, 9, 11, 15.",
+    examples: [[[1, 1], 2], [[4, 4], 8], [[8, 1], 9], [[9, 2], 11], [[11, 4], 15], [[8, 8], 0]] },
+  { id: "h15-3375", group: "Other bases", name: "Harder powers of 15", family: "Powers of 15, harder merges", goals: [3375], size: 5,
+    spawn: [[1, 92], [3, 8]], maxK: 3, ok: recipes(15, [[1, 1, 1], [1, 3, 3], [1, 7, 7]]),
+    ladder: powLadder(15, 1, 3375),
+    rule: "For a power of 15 (n): n + n + n, n + 3n + 3n and n + 7n + 7n merge, in any order. The path is 1, 3, 7, 15.",
+    examples: [[[1, 1, 1], 3], [[1, 3, 3], 7], [[7, 1, 7], 15], [[15, 15, 15], 45], [[3, 3], 0]] },
+  { id: "i15-3375", group: "Other bases", name: "Interleaved 15s", family: "Powers of 15, interleaved", goals: [3375], size: 5,
+    spawn: [[1, 85], [2, 12], [4, 3]], maxK: 3, ok: okI15,
+    ladder: powLadder(15, 1, 3375),
+    rule: "1 + 1 makes 2 and 2 + 2 makes 4. For a power of 15 (n): 4n + n, 5n + 5n + 5n, n + n/3, and 20n + 20n + 20n merge. The path runs 1, 5, 15, 20, 60, 75, 225, and so on.",
+    examples: [[[4, 1], 5], [[5, 5, 5], 15], [[15, 5], 20], [[20, 20, 20], 60], [[60, 15], 75], [[75, 75, 75], 225], [[1, 2], 0]] },
+  { id: "b16-4096", group: "Other bases", name: "Powers of 16", family: "Powers of 16", goals: [4096], size: 5,
+    spawn: [[1, 85], [3, 8], [4, 5], [8, 2]], maxK: 3, ok: recipes(16, [[1, 1, 1], [3, 1], [4, 4], [8, 4, 4]]),
+    ladder: powLadder(16, 1, 4096),
+    rule: "For a power of 16 (n): n + n + n, 3n + n, 4n + 4n, and 8n + 4n + 4n (in any order) merge. The path is 1, 3, 4, 8, 16.",
+    examples: [[[1, 1, 1], 3], [[3, 1], 4], [[4, 4], 8], [[8, 4, 4], 16], [[48, 16], 64], [[1, 1], 0]] },
+  { id: "b17-4913", group: "Other bases", name: "Powers of 17", family: "Powers of 17", goals: [4913], size: 5,
+    spawn: [[1, 90], [3, 7], [5, 3]], maxK: 3, ok: recipes(17, [[1, 1, 1], [3, 1, 1], [5, 5, 1], [1, 5, 11]]),
+    ladder: powLadder(17, 1, 4913),
+    rule: "For a power of 17 (n): n + n + n, 3n + n + n, 5n + 5n + n and n + 5n + 11n merge, in any order. The path is 1, 3, 5, 11, 17.",
+    examples: [[[1, 1, 1], 3], [[3, 1, 1], 5], [[5, 5, 1], 11], [[1, 5, 11], 17], [[1, 1], 0]] },
+  { id: "b20-8000", group: "Other bases", name: "Powers of 20", family: "Powers of 20", goals: [8000], size: 5,
+    spawn: [[1, 90], [2, 9], [6, 1]], maxK: 3, ok: recipes(20, [[1, 1], [2, 2, 2], [6, 6], [12, 6, 2]]),
+    ladder: powLadder(20, 1, 8000),
+    rule: "For a power of 20 (n): n + n, 2n + 2n + 2n, 6n + 6n and 12n + 6n + 2n merge, in any order. The path is 1, 2, 6, 12, 20.",
+    examples: [[[1, 1], 2], [[2, 2, 2], 6], [[6, 6], 12], [[12, 6, 2], 20], [[2, 2], 0]] },
+  { id: "b21-9261", group: "Other bases", name: "Powers of 21", family: "Powers of 21", goals: [9261], size: 5,
+    spawn: [[1, 95], [3, 4], [6, 1]], maxK: 3,
+    ok: vals => TRI21.includes(strip(sum(vals), 21)),
+    ladder: powLadder(21, 1, 9261),
+    rule: "Two or three tiles merge when their sum is a triangular number below 21 (1, 3, 6, 10, 15) times a power of 21.",
+    examples: [[[1, 1, 1], 3], [[1, 2], 3], [[3, 3], 6], [[1, 3, 6], 10], [[6, 6, 3], 15], [[15, 6], 21], [[1, 1], 0]] },
+  { id: "b25-625", group: "Other bases", name: "Powers of 25", family: "Powers of 25", goals: [625], size: 5,
+    spawn: [[1, 90], [2, 5], [3, 5]], maxK: 3, ok: recipes(25, [[1, 1], [2, 2], [4, 4], [8, 8], [1, 1, 1], [3, 3, 3], [16, 9]]),
+    ladder: powLadder(25, 1, 625),
+    rule: "For a power of 25 (n): two equal tiles merge at n, 2n, 4n or 8n; three equal tiles merge at n or 3n; and 16n + 9n merge into the next power.",
+    examples: [[[8, 8], 16], [[1, 1, 1], 3], [[3, 3, 3], 9], [[16, 9], 25], [[3, 3], 0]] },
+
+  { id: "b36-1296", group: "Other bases", name: "Powers of 36", family: "Powers of 36", goals: [1296], size: 5,
+    spawn: [[1, 80], [2, 17], [6, 3]], maxK: 3, ok: recipes(36, [[1, 1], [18, 18], [2, 2, 2], [6, 6, 6]]),
+    ladder: powLadder(36, 1, 1296),
+    rule: "For a power of 36 (n): two equal tiles merge at n or 18n, and three equal tiles merge at 2n or 6n. The path is 1, 2, 6, 18, 36.",
+    examples: [[[1, 1], 2], [[2, 2, 2], 6], [[6, 6, 6], 18], [[18, 18], 36], [[2, 2], 0], [[6, 6], 0]] },
+  { id: "p15-1.5", group: "Other bases", name: "Powers of 1.5", family: "Powers of 1.5", goals: [P15(19)], label: "2216.838…", size: 5,
+    spawn: [[1, 50, "p0"], [2, 50, "d"]], spawnFn: makeBag([[1, "p0"], [1, "p0"], [1, "p0"], [1, "p0"], [2, "d"], [2, "d"], [2, "d"], [2, "d"]]),
+    spawnText: "New tiles come from a shuffled box of four 1s and four ÷2 tiles that refills when it's empty.",
+    maxK: 2, merge: mergeP15, floatOk: true, kindOk: k => /^(d|[ph]\d{1,2})$/.test(k),
+    kindColors: { d: { bg: "#2a6f6a", fg: "#ffffff" } },
+    text: (v, k) => k === "d" ? "÷2" : fmtV(v),
+    sub: (v, k) => !k || k === "d" ? "" : k[0] === "p" ? (k === "p0" ? "" : "1.5" + SUP(k.slice(1))) : "½·1.5" + SUP(k.slice(1)),
+    tagline: "Make the 1.5¹⁹ tile (2,216.838…).",
+    ladder: Array.from({ length: 20 }, (_, n) => P15(n)),
+    rule: "A power of 1.5 merges with a tile half its size to make the next power. Two equal half tiles merge back into a power. A ÷2 tile halves any power of 1.5 it meets, and two ÷2 tiles merge into one.",
+    examples: [[[[1, "p0"], [2, "d"]], [0.5, "h0"]], [[[1, "p0"], [0.5, "h0"]], [1.5, "p1"]], [[[1.5, "p1"], [2, "d"]], [0.75, "h1"]], [[[1.5, "p1"], [0.75, "h1"]], [2.25, "p2"]], [[[0.5, "h0"], [0.5, "h0"]], [1, "p0"]], [[[2, "d"], [2, "d"]], [2, "d"]], [[[1.5, "p1"], [1.5, "p1"]], 0]] },
+  { id: "b30-900", group: "Other bases", name: "Powers of 30", family: "Powers of 30", goals: [900], size: 7,
+    spawn: [[1, 100]], maxK: 7, ok: ok30,
+    ladder: powLadder(30, 1, 900),
+    rule: "A prime number of equal tiles (2, 3, 5 or 7) merge when each is the same multiple of a power of 30 and their sum divides the next power of 30. So 1s can merge in 2s, 3s or 5s, but 7 of them make 7, which doesn't divide 30.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[1, 1, 1, 1, 1], 5], [[2, 2, 2], 6], [[6, 6, 6, 6, 6], 30], [[15, 15], 30], [[2, 2], 0], [[10, 10], 0]] },
+  { id: "s23-3888", group: "Two-prime products", name: "2s and 3s", family: "Powers of 2 times powers of 3", goals: [3888], size: 4,
+    spawn: [[1, 100]], maxK: 2, ok: vals => (vals[0] === 1 && vals[1] === 1) || pairMult([2, 3])(vals), ladder: ladderTo(3888),
+    rule: "Two 1s merge into a 2. After that, a tile merges with a tile exactly double or triple it.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[1, 3], 4], [[2, 6], 8], [[972, 2916], 3888], [[2, 2], 0], [[2, 5], 0]] },
+  { id: "e23-3888", group: "Two-prime products", name: "Easier 2s and 3s", family: "Powers of 2 times powers of 3", goals: [3888], size: 4,
+    spawn: [[1, 100]], maxK: 2, ok: vals => (vals[0] === 1 && vals[1] === 1) || pairMult([2, 3, 8])(vals), ladder: ladderTo(3888),
+    rule: "Two 1s merge into a 2. After that, a tile merges with a tile exactly double, triple or 8 times it.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[1, 3], 4], [[1, 8], 9], [[48, 384], 432], [[2, 2], 0]] },
+  { id: "s25-2000", group: "Two-prime products", name: "2s and 5s", family: "Powers of 2 times powers of 5", goals: [2000], size: 5,
+    spawn: [[1, 100]], maxK: 3,
+    ok: vals => { const s = asc(vals); return (s.length === 2 && s[0] === s[1] && (s[0] === 1 || s[0] === 2)) || (s.length === 2 && pairMult([4])(s)) || multiSet([[1, 2, 5]])(s); },
+    ladder: ladderTo(2000),
+    rule: "Two 1s make 2 and two 2s make 4. After that, a tile merges with one 4 times it (x + 4x), or a tile, its double and 5 times it merge together (x + 2x + 5x), in any order.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[1, 4], 5], [[1, 2, 5], 8], [[2, 8], 10], [[250, 500, 1250], 2000], [[1, 2], 0]] },
+  { id: "s35-3645", group: "Two-prime products", name: "3s and 5s", family: "Powers of 3 times powers of 5", goals: [3645], size: 5,
+    spawn: [[1, 100]], maxK: 3,
+    ok: vals => { const s = asc(vals); return (s.length === 3 && same(s) && s[0] === 1) || multiSet([[1, 1, 3], [1, 5, 3], [1, 5, 9]])(s); },
+    ladder: ladderTo(3645),
+    rule: "Three 1s merge into a 3. After that, three tiles merge, in any order: two equal tiles and one triple them (n + n + 3n), n + 5n + 3n, or n + 5n + 9n.",
+    examples: [[[1, 1, 1], 3], [[1, 1, 3], 5], [[1, 5, 3], 9], [[1, 5, 9], 15], [[3, 3, 9], 15], [[243, 1215, 2187], 3645], [[1, 1], 0]] },
+  { id: "dual-mix", group: "Mixed rules", name: "Dual-mix", family: "Powers of 2 and 3", goals: [2048, 2187], need: "any", size: 5,
+    spawn: DUAL_SPAWN, maxK: 2, ok: DUAL_OK, ladder: DUAL_LADDER, ladderTitle: "Both ladders",
+    rule: DUAL_RULE + " Make either a 2048 or a 2187 to win.", examples: DUAL_EX },
+  { id: "dual-goal", group: "Mixed rules", name: "Dual-goal", family: "Powers of 2 and 3", goals: [2048, 2187], need: "all", size: 6,
+    spawn: DUAL_SPAWN, maxK: 2, ok: DUAL_OK, ladder: DUAL_LADDER, ladderTitle: "Both ladders",
+    rule: DUAL_RULE + " Make both a 2048 and a 2187 to win. They don't have to be on the board at the same time.", examples: DUAL_EX },
+  { id: "ps-576", group: "Mixed rules", name: "Primes & squares", family: "Primes and squares", goals: [576], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2,
+    ok: ([a, b]) => { const s = a + b; return isPrime(s) || isSquare(s); },
+    ladder: [1, 4, 16, 36, 64, 100, 144, 196, 256, 324, 400, 484, 576], ladderTitle: "Squares on the way",
+    rule: "Any two tiles merge when their sum is a prime number or a perfect square. Reach a tile of 576 (24²) or more.",
+    examples: [[[1, 1], 2], [[1, 3], 4], [[2, 3], 5], [[4, 5], 9], [[3, 3], 0]] },
+  { id: "ps-1156", group: "Mixed rules", name: "Primes & squares, higher", family: "Primes and squares", goals: [1156], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2,
+    ok: ([a, b]) => { const s = a + b; return isPrime(s) || isSquare(s); },
+    ladder: [1, 4, 16, 36, 64, 100, 144, 196, 256, 324, 400, 484, 576, 676, 784, 900, 1024, 1156], ladderTitle: "Squares on the way",
+    tagline: "Slide and merge tiles to reach 1,156 or more.",
+    rule: "Any two tiles merge when their sum is a prime number or a perfect square. Reach a tile of 1,156 (34²) or more.",
+    examples: [[[1, 1], 2], [[1, 3], 4], [[2, 3], 5], [[4, 5], 9], [[3, 3], 0]] },
+  { id: "psh-1156", group: "Mixed rules", name: "Harder primes & squares", family: "Primes and squares", goals: [1156], size: 4,
+    spawn: [[1, 20], [2, 40], [3, 40]], maxK: 2,
+    ok: ([a, b]) => { const s = a + b; return isPrime(s) || isSquare(s); },
+    ladder: [1, 4, 16, 36, 64, 100, 144, 196, 256, 324, 400, 484, 576, 676, 784, 900, 1024, 1156], ladderTitle: "Squares on the way",
+    tagline: "Slide and merge tiles to reach 1,156 or more.",
+    rule: "Any two tiles merge when their sum is a prime number or a perfect square. Mostly 2s and 3s spawn, which rarely sum to a prime or square on their own. Reach 1,156 (34²) or more.",
+    examples: [[[2, 3], 5], [[2, 2], 4], [[3, 3], 0], [[2, 7], 9], [[4, 5], 9]] },
+  { id: "pm1-2047", group: "Sequences", name: "Powers of 2 minus 1", family: "Powers of 2 minus 1", goals: [2047], size: 5,
+    spawn: [[1, 95], [3, 5]], maxK: 3,
+    ok: vals => { const s = asc(vals); return s.length === 3 && s[0] === 1 && s[1] === s[2]; },
+    ladder: powLadder(2, 2, 2048).map(v => v - 1),
+    rule: "Two equal tiles merge with a 1 (n + n + 1), in any order. Every tile is one less than a power of 2.",
+    examples: [[[1, 1, 1], 3], [[3, 3, 1], 7], [[7, 1, 7], 15], [[3, 3], 0], [[1, 1], 0]] },
+  { id: "pm1-2186", group: "Sequences", name: "Powers of 3 minus 1", family: "Powers of 3 minus 1", goals: [2186], size: 5,
+    spawn: [[1, 92], [2, 7], [5, 1]], maxK: 3,
+    ok: vals => {
+      const s = asc(vals);
+      if (s.length === 2) return s[0] === 1 && s[1] === 1;
+      if (s.length !== 3 || s[0] !== 1) return false;
+      const [x, y] = [s[1], s[2]];
+      return x >= 2 && isPow(x + 1, 3) && (y === x || y === 2 * x + 1);
+    },
+    ladder: powLadder(3, 3, 2187).map(v => v - 1),
+    rule: "Two 1s merge into a 2. Every other merge takes three tiles: a 1, a tile one less than a power of 3 (n − 1), and either another n − 1 or one less than double it (2n − 1). Order doesn't matter.",
+    examples: [[[1, 1], 2], [[1, 2, 2], 5], [[1, 2, 5], 8], [[1, 8, 8], 17], [[1, 8, 17], 26], [[2, 2], 0]] },
+  { id: "pp1-2049", group: "Sequences", name: "Powers of 2 plus 1", family: "Powers of 2 plus 1", goals: [2049], size: 5, neg: true,
+    spawn: [[1, 65], [-1, 35]], maxK: 3,
+    merge: tiles => {
+      const s = asc(tiles.map(t => t.v));
+      if (s.length === 2) return s[0] === 1 && s[1] === 1 ? { v: 2 } : s[0] === -1 && s[1] === 1 ? { destroy: true } : null;
+      return s[0] === -1 && s[1] === s[2] && s[1] >= 2 && isPow(s[1] - 1, 2) ? { v: 2 * s[1] - 1 } : null;
+    },
+    ladder: powLadder(2, 1, 2048).map(v => v + 1),
+    rule: "Two 1s merge into a 2. Every other merge takes two equal tiles and a −1 (n + n − 1), in any order. When a 1 and a −1 meet, both disappear.",
+    examples: [[[1, 1], 2], [[2, 2, -1], 3], [[3, -1, 3], 5], [[5, 5, -1], 9], [[1, -1], "gone"], [[2, 2], 0]] },
+  { id: "fact-5040", group: "Sequences", name: "Factorials", family: "Factorials", goals: [5040], size: 5,
+    spawn: [[1, 100]], maxK: 4, ok: factOk,
+    ladder: [1, 2, 6, 24, 120, 720, 5040],
+    rule: "A tile between n! and (n + 1)! counts in units of n! and follows the powers of (n + 1) rules to climb from n! to (n + 1)!. So 1 + 1 makes 2, then powers of 3 rules take 2 to 6, powers of 4 rules take 6 to 24, and so on. Tiles in different ranges never merge.",
+    examples: [[[1, 1], 2], [[2, 4], 6], [[6, 6, 6], 18], [[18, 6], 24], [[24, 72], 96], [[360, 360], 720], [[2, 2, 2], 0]] },
+  { id: "s-2059", group: "Sequences", name: "3ⁿ − 2ⁿ", family: "3ⁿ − 2ⁿ", goals: [2059], size: 5,
+    spawn: [[1, 90], [2, 6], [3, 4]], maxK: 3, ok: ok2059,
+    ladder: [1, 5, 19, 65, 211, 665, 2059],
+    rule: "Two equal powers of 2 merge (2ⁿ + 2ⁿ). Three equal tiles of 3ⁿ − 2ⁿ merge into triple that value, and that tile plus a 2ⁿ (same n) makes the next 3ⁿ − 2ⁿ. So 1 + 1 + 1 makes 3, and 3 + 2 makes 5.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[3, 2], 5], [[5, 5, 5], 15], [[15, 4], 19], [[57, 8], 65], [[5, 4], 0]] },
+  { id: "s-2315", group: "Sequences", name: "3ⁿ + 2ⁿ", family: "3ⁿ + 2ⁿ", goals: [2315], size: 5,
+    spawn: [[1, 90], [2, 6], [3, 4]], maxK: 3, ok: ok2315,
+    ladder: [2, 5, 13, 35, 97, 275, 793, 2315],
+    rule: "Two or three 1s merge. After that, three equal powers of 3 merge (3ⁿ + 3ⁿ + 3ⁿ), and two tiles of 3ⁿ + 2ⁿ merge with a 3ⁿ (same n) to make the next 3ⁿ + 2ⁿ.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[2, 2, 1], 5], [[3, 3, 3], 9], [[5, 5, 3], 13], [[13, 13, 9], 35], [[2, 2], 0]] },
+  { id: "s-2131", group: "Sequences", name: "Odd doubles", family: "Odd doubles", goals: [2131], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, ok: ok2131,
+    ladder: [...new Set(SEQ2131)].filter(v => v <= 2131),
+    rule: "Two equal odd tiles merge (o + o). An even tile merges with the tile two steps before it on the ladder: 2 + 1, 6 + 2, 8 + 3, 22 + 8, and so on up to 1560 + 571 = 2131.",
+    examples: [[[1, 1], 2], [[2, 1], 3], [[3, 3], 6], [[6, 2], 8], [[8, 3], 11], [[22, 8], 30], [[2, 2], 0], [[8, 6], 0]] },
+  { id: "nar-2745", group: "Sequences", name: "Narayana's cows", family: "Narayana's cows", goals: [2745], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, ok: okNarayana,
+    ladder: NARAYANA,
+    rule: "1 + 1 makes 2 and 1 + 2 makes 3. After that, a tile merges with the tile two steps before it on the ladder: 3 + 1, 4 + 2, 6 + 3, 9 + 4, and so on.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[3, 1], 4], [[4, 2], 6], [[6, 3], 9], [[9, 4], 13], [[4, 3], 0]] },
+  { id: "trib-1705", group: "Sequences", name: "Tribonacci", family: "Tribonacci", goals: [1705], size: 5,
+    spawn: [[1, 85], [2, 12], [4, 3]], maxK: 3, ok: okTrib,
+    ladder: TRIB,
+    rule: "1 + 1 makes 2, and 1 + 1 + 2 makes 4. After that, a tile merges with the two tiles just before it on the ladder, in any order: 4 + 2 + 1, 7 + 4 + 2, 13 + 7 + 4, and so on.",
+    examples: [[[1, 1], 2], [[1, 1, 2], 4], [[4, 2, 1], 7], [[7, 4, 2], 13], [[13, 7, 4], 24], [[2, 2], 0], [[4, 2], 0]] },
+  { id: "pell-2378", group: "Sequences", name: "Pell", family: "Pell numbers", goals: [2378], size: 5,
+    spawn: [[1, 85], [2, 12], [5, 3]], maxK: 3, ok: okPell,
+    ladder: PELL,
+    rule: "1 + 1 makes 2. After that, two of a tile merge with one of the tile before it on the ladder, in any order: 2 + 2 + 1, 5 + 5 + 2, 12 + 12 + 5, and so on.",
+    examples: [[[1, 1], 2], [[2, 2, 1], 5], [[5, 5, 2], 12], [[12, 12, 5], 29], [[2, 1, 1], 0], [[5, 5], 0]] },
+  { id: "prim-2310", group: "Sequences", name: "Primorials", family: "Primorials", goals: [2310], size: 4,
+    spawn: [[1, 85], [2, 12], [4, 3]], maxK: 3, merge: mergePrim,
+    ladder: [1, 2, 6, 30, 210, 2310],
+    rule: "Tiles with no repeated prime factor merge with an equal tile. A multiple of 4 merges with half of itself, a multiple of 9 with two-thirds of itself, and a multiple of 25 with two-fifths of itself. A multiple of 49 merges with two tiles that are each two-sevenths of it. Three-tile merges can't use a primorial (1, 2, 6, 30, 210, 2310).",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[4, 2], 6], [[6, 6], 12], [[12, 6], 18], [[18, 12], 30], [[150, 60], 210], [[1470, 420, 420], 2310], [[4, 4], 0]] },
+  { id: "fp-3026", group: "Sequences", name: "Fibonacci products", family: "Products of Fibonacci numbers", goals: [3026], size: 4,
+    spawn: [[1, 90, 1], [2, 10, 2]], maxK: 2, merge: mergeFibProd,
+    kindOk: (k, v) => Number.isInteger(k) && isFibNum(k) && v % k === 0 && isFibNum(v / k) && v / k <= k,
+    text: (v, k) => `${v / k}×${k}`, ladder: ladderTo(3026),
+    tagline: "Slide and merge tiles to reach 34×89 (3,026) or more.",
+    rule: "Every tile is a product of two Fibonacci numbers. Two tiles merge when they share a factor and their other factors are both 1 or are neighbors in the Fibonacci sequence; the other factors add: 1×2 + 1×1 makes 1×3, and 34×55 + 34×34 makes 34×89.",
+    examples: [[[[1, 1], [1, 1]], [2, 2]], [[[2, 2], [1, 1]], [3, 3]], [[[2, 2], [2, 2]], [4, 2]], [[[6, 3], [4, 2]], [10, 5]], [[[1870, 55], [1156, 34]], [3026, 89]], [[[3, 3], [2, 2]], 0]] },
+  { id: "mem-2669", group: "Sequences", name: "Family merges", family: "Merge with a parent", goals: [2669], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, merge: mergeMem,
+    kindOk: k => /^\d+,\d+;(\d+(,\d+)?)?$/.test(k),
+    text: v => fmtV(v),
+    sub: (v, k) => { if (!k) return ""; const { par, last } = memParse(k); return `${par[0]}+${par[1]}` + (last.length === 2 && last[0] === last[1] ? ` · no ${last[0]}` : ""); },
+    ladder: ladderTo(2669),
+    rule: "Any two new tiles merge. After that, a bigger tile merges with a smaller tile equal to one of the two tiles it was made from, unless its last two merges were both with that number. Each tile shows what it was made from.",
+    examples: [[[1, 2], [3, "1,2;"]], [[[3, "1,2;"], 2], [5, "3,2;2"]], [[[5, "3,2;2"], 3], [8, "5,3;2,3"]], [[[5, "3,2;2"], 2], [7, "5,2;2,2"]], [[[7, "5,2;2,2"], 2], 0]] },
+  { id: "tier-1536", group: "Sequences", name: "Tiers", family: "Tiers of three", goals: [1535, 1536, 1537], need: "any", size: 4,
+    spawn: [[2, 1], [3, 1], [4, 1]], spawnFn: makeBag([2, 3, 4]),
+    spawnText: "New tiles come from a box holding one 2, one 3 and one 4 that refills when it's empty.",
+    maxK: 2, ok: ([a, b]) => a !== b && tierOf(a) > 0 && tierOf(a) === tierOf(b),
+    ladder: Array.from({ length: 10 }, (_, i) => 3 * 2 ** i), ladderTitle: "Tier centers",
+    rule: "Tiles come in tiers of three: 2, 3, 4; then 5, 6, 7; then 11, 12, 13; and so on. Two different tiles of the same tier merge into the next tier. Make 1,535, 1,536 or 1,537 to win.",
+    examples: [[[2, 3], 5], [[2, 4], 6], [[3, 4], 7], [[5, 7], 12], [[11, 13], 24], [[3, 3], 0], [[4, 5], 0]] },
+  { id: "fib-2584", group: "Sequences", name: "Fibonacci", family: "Fibonacci", goals: [2584], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2,
+    ok: ([a, b]) => { const [lo, hi] = lohi2(a, b); if (lo === 1 && hi === 1) return true; const i = fibs.indexOf(hi); return i > 0 && fibs[i - 1] === lo; },
+    ladder: fibs,
+    rule: "Two 1s merge into a 2. After that, a Fibonacci number merges with the one just before it: 2 + 1, 3 + 2, 5 + 3, and so on.",
+    examples: [[[1, 1], 2], [[2, 1], 3], [[3, 2], 5], [[8, 5], 13], [[987, 1597], 2584], [[3, 3], 0], [[5, 2], 0]] },
+  { id: "bc-2584", group: "Sequences", name: "Bicolor Fibonacci", family: "Fibonacci, two colors", goals: [2584], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 2.5, "c"], [3, 2.5, "y"]], maxK: 2, merge: mergeBi2584,
+    kinds: ["c", "y"], kindHues: { c: 188, y: 46 }, kindNames: { c: "cyan", y: "yellow" },
+    ladder: fibs,
+    rule: "Fibonacci merges: two 1s, then a tile with the one just before it. Every tile above 2 has a color. The new tile is cyan when the bigger tile slides into the smaller one, and yellow when the smaller slides into the bigger. A colored tile merging with an uncolored one keeps its color. Two colored tiles merge only if their colors differ. In the examples, the first tile is the one sliding in.",
+    examples: [[[1, 1], 2], [[2, 1], [3, "c"]], [[1, 2], [3, "y"]], [[[3, "c"], 2], [5, "c"]], [[[5, "y"], [3, "c"]], [8, "c"]], [[[3, "y"], [5, "c"]], [8, "y"]], [[[5, "c"], [3, "c"]], 0]] },
+  { id: "fm1-2583", group: "Sequences", name: "Fibonacci minus 1", family: "Fibonacci minus 1", goals: [2583], size: 5,
+    spawn: [[1, 93], [2, 5], [4, 2]], maxK: 3, ok: okFm1, ladder: FM1,
+    rule: "Two 1s merge into a 2. After that, a tile merges with the tile just before it on the ladder plus a 1, in any order: 2 + 1 + 1, 4 + 2 + 1, 7 + 4 + 1, and so on.",
+    examples: [[[1, 1], 2], [[2, 1, 1], 4], [[4, 2, 1], 7], [[7, 4, 1], 12], [[1596, 986, 1], 2583], [[4, 2], 0]] },
+  { id: "t-3072", group: "Mixed rules", name: "Powers of 2 × 3", family: "Powers of 2 times 3", goals: [3072], size: 4,
+    spawn: [[1, 1], [2, 1], [3, 1]], spawnFn: spawn3072, maxK: 2, ok: ok3072,
+    spawnText: "New tiles come from a shuffled box of four 1s, four 2s and four 3s that refills when it's empty. Once your top tile is 48 or more, each new tile has a 1 in 21 chance to be a bonus tile, anywhere from 6 up to an eighth of your top tile.",
+    special: { 1: { bg: "#4aa3df", fg: "#ffffff" }, 2: { bg: "#ee5f78", fg: "#ffffff" } },
+    ladder: powLadder(2, 3, 3072),
+    rule: "A 1 and a 2 merge into a 3. From 3 up, two equal tiles merge (3 + 3, 6 + 6, 12 + 12 …). Two 1s or two 2s don't merge.",
+    examples: [[[1, 2], 3], [[3, 3], 6], [[6, 6], 12], [[1536, 1536], 3072], [[1, 1], 0], [[2, 2], 0]] },
+  { id: "r-180", group: "Mixed rules", name: "2-3-5 lines", family: "Lines of 2, 3 or 5", goals: [180], size: 7,
+    spawn: [[1, 100]], maxK: 7, runs: [2, 3, 5], ok: () => false,
+    ladder: [1, 2, 3, 4, 5, 6, 9, 10, 12, 15, 18, 20, 30, 36, 45, 60, 90, 180],
+    rule: "A line of 2, 3 or 5 equal tiles merges into one tile worth their total. A line of 4, or of 6 or more, doesn't merge at all.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[1, 1, 1, 1, 1], 5], [[6, 6, 6, 6, 6], 30], [[90, 90], 180], [[1, 1, 1, 1], 0]] },
+  { id: "pm-10", group: "Mixed rules", name: "Plus and minus", family: "Positive and negative", goals: [10], size: 5, neg: true, absTop: true,
+    spawn: [[1, 50], [-1, 50]], maxK: 3, merge: mergeTen,
+    tagline: "Slide and merge tiles to reach 10 or −10.",
+    ladder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    rule: "Two 1s make 2 and two −1s make −2. After that, two equal tiles merge with a tile of the opposite sign one step closer to zero: 2 + 2 + (−1) → 3, 3 + 3 + (−2) → 4, and −2 + (−2) + 1 → −3. Reach 10 or −10 to win.",
+    examples: [[[1, 1], 2], [[-1, -1], -2], [[2, 2, -1], 3], [[-2, -2, 1], -3], [[3, 3, -2], 4], [[9, 9, -8], 10], [[2, 2], 0], [[1, -1], 0]] },
+  { id: "xy", group: "Mixed rules", name: "Perfect powers", family: "Perfect powers", goals: [1024], label: "Xʸ", size: 5,
+    count: 12, countIf: v => isPerfPow(v, 3), slotLabel: "cube+",
+    tagline: "Make 12 tiles that are cubes or higher powers.", winText: "You made 12 cubes or higher powers",
+    ladderTitle: "Cubes and higher powers made",
+    spawn: [[1, 100]], maxK: 4, ok: vals => isPerfPow(sum(vals)), ladder: [],
+    rule: "Any 2, 3 or 4 tiles merge when their sum is a perfect power: a whole number of at least 2 raised to a power of at least 2, like 4, 8, 9, 16, 25, 27 or 32. Make 12 tiles that are cubes or higher powers (8, 16, 27, 32, 64, 81 …) to win.",
+    examples: [[[1, 1, 1, 1], 4], [[4, 4], 8], [[4, 4, 1], 9], [[8, 8], 16], [[9, 16], 25], [[16, 8, 3], 27], [[1, 1], 0]] },
+  { id: "n-1762", group: "Mixed rules", name: "Neighbors", family: "Equal or one apart", goals: [1762], size: 4,
+    spawn: [[1, 90], [2, 10]], maxK: 2, ok: ([a, b]) => a === b || Math.abs(a - b) === 1, ladder: L1762,
+    rule: "Two tiles merge when they're equal or differ by 1.",
+    examples: [[[1, 1], 2], [[2, 3], 5], [[5, 5], 10], [[10, 11], 21], [[881, 881], 1762], [[2, 4], 0]] },
+  { id: "h-1762", group: "Mixed rules", name: "Pairs plus one", family: "Equal pairs, plus a 1", goals: [1762], size: 5,
+    spawn: [[1, 94], [2, 3], [3, 3]], maxK: 3, ladder: L1762,
+    ok: vals => { const s = asc(vals); return s.length === 2 ? s[0] === s[1] : s[0] === 1 && s[1] === s[2]; },
+    rule: "Two equal tiles merge, with or without a 1 joining as a third tile, in any order.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[3, 3, 1], 7], [[7, 1, 7], 15], [[881, 881], 1762], [[2, 3], 0]] },
+  { id: "s-1668", group: "Mixed rules", name: "Triple steps", family: "Equal pairs plus a neighbor", goals: [1668], size: 5,
+    spawn: [[1, 84], [2, 8], [3, 8]], maxK: 3, ok: ok1668, ladder: [1, 2, 4, 13, 40, 121, 364, 1093, 1668],
+    tagline: "Slide and merge tiles to reach 1,668 or more.",
+    rule: "Two 1s merge. Every other merge takes three tiles: two equal tiles plus one that's 1 more or 1 less than them, in any order. Three tiles always add up to 1 more or 1 less than a multiple of 3, so an exact 1,668 can't form; any tile of 1,668 or more wins.",
+    examples: [[[1, 1], 2], [[1, 1, 2], 4], [[2, 2, 1], 5], [[2, 2, 3], 7], [[4, 5, 4], 13], [[2, 2], 0]] },
+  { id: "d-1847", group: "Mixed rules", name: "Double or near", family: "Doubles, give or take 1", goals: [1847], size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, ok: ([a, b]) => { const [lo, hi] = lohi2(a, b); return Math.abs(hi - 2 * lo) <= 1; },
+    ladder: [...powLadder(2, 1, 1024), 1847],
+    rule: "Two tiles merge when one is double the other, or double the other plus or minus 1.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[1, 3], 4], [[2, 3], 5], [[5, 11], 16], [[616, 1231], 1847], [[2, 6], 0]] },
+  { id: "pm1-1429", group: "Mixed rules", name: "Pairs and ±1", family: "Equal pairs with ±1", goals: [1429], size: 5, neg: true,
+    spawn: [[1, 75], [-1, 25]], maxK: 3, ladder: [1, 3, 7, 15, 31, 63, 127, 255, 511, 1023, 1429],
+    merge: tiles => {
+      const v = tiles.map(t => t.v);
+      if (v.length === 2) { const [lo, hi] = lohi2(v[0], v[1]); return lo === -1 && hi === 1 ? { destroy: true } : null; }
+      if (v.includes(1) && v.includes(-1)) return null;
+      return ok1429(v) ? { v: sum(v) } : null;
+    },
+    rule: "Three tiles merge: two equal positive tiles plus a 1 or a −1, in any order. When a 1 and a −1 meet, both disappear.",
+    examples: [[[1, 1, 1], 3], [[3, 3, 1], 7], [[3, 3, -1], 5], [[714, 714, 1], 1429], [[1, -1], "gone"], [[1, 1], 0]] },
+  { id: "prod-2496", group: "Mixed rules", name: "Products", family: "Products of two numbers", goals: [2496], size: 4,
+    spawn: [[1, 90, 1], [2, 10, 2]], maxK: 2, merge: mergeProd,
+    kindOk: (k, v) => Number.isInteger(k) && k > 0 && v % k === 0 && v / k <= k,
+    text: (v, k) => `${v / k}×${k}`,
+    ladder: [...powLadder(2, 1, 2048), 2496],
+    tagline: "Slide and merge tiles to reach a product of 2,496 or more.",
+    rule: "Every tile is a product of two numbers. Two tiles merge when their larger numbers match, and their smaller numbers add: 3×11 + 5×11 makes 8×11. If the sum passes the larger number, they swap places: 5×11 + 8×11 makes 11×13.",
+    examples: [[[[1, 1], [1, 1]], [2, 2]], [[[2, 2], [2, 2]], [4, 2]], [[[33, 11], [55, 11]], [88, 11]], [[[55, 11], [88, 11]], [143, 13]], [[[2, 2], [1, 1]], 0]] },
+  { id: "tb-2295", group: "Ratios", name: "Turn-based ratios", family: "Ratios by turn", goals: [2295], size: 4,
+    spawn: [[1, 100]], maxK: 2, ok: ([a, b], turn) => { const [lo, hi] = lohi2(a, b); return hi === lo * turnRatio(turn); },
+    turnHint: t => `Move ${t}: ${turnRatio(t) === 1 ? "two equal tiles merge." : `a tile merges with one ${turnRatio(t)} times its value.`}`,
+    ladder: L2295,
+    rule: "The rule changes every move. On odd moves, two equal tiles merge. On moves that are even but not multiples of 4, a tile merges with one double its value. On multiples of 4 but not 8, one 4 times its value; multiples of 8 but not 16, 8 times; and so on.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[3, 12], 15], [[5, 40], 45], [[2, 3], 0]] },
+  { id: "tl-2295", group: "Ratios", name: "Timeless ratios", family: "Power-of-2 ratios", goals: [2295], size: 4,
+    spawn: [[1, 100]], maxK: 2, ok: ([a, b]) => { const [lo, hi] = lohi2(a, b); return hi % lo === 0 && isPow(hi / lo, 2); },
+    ladder: L2295,
+    rule: "Two tiles merge when one is the other times a power of 2 (1, 2, 4, 8 …).",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[3, 12], 15], [[5, 40], 45], [[3, 9], 0]] },
+  { id: "rsq-3385", group: "Ratios", name: "Square ratios", family: "Ratios that are squares", goals: [3385], size: 4,
+    spawn: [[1, 100]], maxK: 2, ok: ([a, b]) => ratioPow(a, b, [2]), ladder: ladderTo(3385),
+    rule: "Two tiles merge when their ratio is the square of a fraction, like 1 : 1, 1 : 4, 4 : 9 or 2 : 8.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[1, 4], 5], [[2, 8], 10], [[5, 20], 25], [[1, 2], 0]] },
+  { id: "rcu-2920", group: "Ratios", name: "Cube ratios", family: "Ratios that are cubes", goals: [2920], size: 4,
+    spawn: [[1, 100]], maxK: 2, ok: ([a, b]) => ratioPow(a, b, [3]), ladder: ladderTo(2920),
+    rule: "Two tiles merge when their ratio is the cube of a fraction, like 1 : 1, 1 : 8, 8 : 27 or 2 : 16.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[1, 8], 9], [[2, 16], 18], [[8, 27], 35], [[1, 4], 0]] },
+  { id: "rpp-2740", group: "Ratios", name: "Perfect-power ratios", family: "Ratios that are perfect powers", goals: [2740], size: 4,
+    spawn: [[1, 100]], maxK: 2, ok: ([a, b]) => ratioPow(a, b, ALL_K), ladder: ladderTo(2740),
+    rule: "Two tiles merge when their ratio is a perfect power of a fraction: a square, cube or higher, like 1 : 4, 1 : 8, 4 : 9 or 1 : 32.",
+    examples: [[[1, 1], 2], [[1, 4], 5], [[1, 8], 9], [[4, 9], 13], [[1, 32], 33], [[1, 2], 0]] },
+  { id: "sm-2592", group: "Mixed rules", name: "3-smooth", family: "3-smooth numbers", goals: [2592], size: 4,
+    spawn: [[1, 90], [2, 5], [3, 5]], maxK: 3, ok: (vals, turn) => same(vals) && vals.length === (turn % 2 === 0 ? 2 : 3),
+    turnHint: t => `Move ${t}: ${t % 2 === 0 ? "two" : "three"} equal tiles merge.`,
+    ladder: [1, 2, 3, 6, 12, 36, 72, 216, 432, 1296, 2592],
+    rule: "The rule switches every move. On odd moves, three equal tiles merge. On even moves, two equal tiles merge. Every tile is 2ᵃ × 3ᵇ.",
+    examples: [[[1, 1, 1], 3], [[3, 3], 6], [[6, 6, 6], 18], [[1296, 1296], 2592], [[2, 3], 0]] },
+  { id: "xn", group: "Powers of n", name: "Powers of n", family: "Powers of n", goals: [1000], count: 4, label: "XXXX", size: 6,
+    spawn: [[1, 100]], maxK: 6, kinds: [2, 3, 4, 5, 6], hsl: true,
+    merge: tiles => {
+      if (tiles.every(t => t.v === 1 && !t.k)) return { v: tiles.length, k: tiles.length };
+      const k = tiles[0].k;
+      if (!Number.isInteger(k) || tiles.length !== k || tiles.some(t => t.k !== k || t.v !== tiles[0].v)) return null;
+      return { v: tiles[0].v * k, k };
+    },
+    ladderTitle: "Tiles of 1,000 or more",
+    rule: "Any number of 1s in a row merge, and how many you merge sets the tile's color. A tile of n 1s then needs n matching tiles of the same number and color to merge again: 2 → 4 → 8, or 3 → 9 → 27. Same number, different color doesn't merge. Darker means further along. Make 4 tiles of 1,000 or more to win.",
+    examples: [[[1, 1], [2, 2]], [[1, 1, 1], [3, 3]], [[[2, 2], [2, 2]], [4, 2]], [[[3, 3], [3, 3], [3, 3]], [9, 3]], [[1, 1, 1, 1], [4, 4]], [[[4, 4], [4, 2]], 0]] },
+  xnMode("xn-e500", "Easier", 4, 500),
+  xnMode("xn-h2000", "Harder", 4, 2000),
+  xnMode("xn-e3", "Other easier", 3, 1000),
+  xnMode("xn-h6", "Other harder", 6, 1000)
+];
+MODES.forEach(m => {
+  m.rows = m.rows || m.size;
+  m.cols = m.cols || m.size;
+  m.need = m.need || "any";
+  m.top = Math.max(...m.goals);
+  m.label = m.label || m.goals.map(g => g.toLocaleString()).join(m.need === "all" ? " + " : " / ");
+  m.labelHtml = m.count ? m.label : m.goals.map(g => g.toLocaleString()).join(`<span class="join">${m.need === "all" ? "+" : "/"}</span>`);
+});
+const BY_ID = Object.fromEntries(MODES.map(m => [m.id, m]));
+
+/* ---------- Arcade ----------
+   12 stages drawn from pools that get harder, then a fixed boss: Powers of 30 rules on 10×10,
+   tiles go blank after 6 moves, and a new tile drops every 10 seconds. The arcade mode object is
+   reconfigured from the stage's base mode each time a stage starts. */
+const ARCADE = BY_ID.arcade;
+const BOSS = 13, BLANK_AFTER = 6, BOSS_SPEED = 10000;
+const ARCADE_KEEP = new Set(["id", "group", "name", "arcade"]);
+const ARCADE_SKIP = new Set(["id", "group", "name", "label", "labelHtml", "goals", "top", "need", "count", "countIf", "together", "dyn",
+  "tagline", "winText", "ladderTitle", "slotLabel", "boardBg", "cellBg", "rows", "cols"]);
+const ARCADE_POOLS = [
+  [["2048", 128], ["1024", 128], ["b3-2187", 81], ["fib-2584", 144], ["s4-2048", 256], ["n-1762", 128], ["tl-2295", 96]],
+  [["2048", 256], ["3x3-128", 64], ["b3-2187", 243], ["fib-2584", 377], ["ps-576", 100], ["b5-3125", 125], ["d-1847", 200], ["t-3072", 192]],
+  [["2048", 512], ["b4-1024", 256], ["dual-mix", 256], ["trib-1705", 274], ["pell-2378", 408], ["3m-243", 81], ["b6-1296", 216], ["bc-2187", 243], ["prim-2310", 210]],
+  [["2048", 1024], ["b3-2187", 729], ["fib-2584", 987], ["b7-2401", 343], ["b10-10000", 1000], ["ps-576", 400], ["h-2048", 256], ["pm-10", 7], ["rf-1296", 216]]
+];
+function planRun() {
+  const plan = [], used = new Set();
+  for (let st = 1; st < BOSS; st++) {
+    const pool = ARCADE_POOLS[Math.min(3, Math.floor((st - 1) / 3))];
+    let opts = pool.filter(([id]) => !used.has(id));
+    if (!opts.length) opts = pool;
+    const pick = opts[Math.floor(Math.random() * opts.length)];
+    used.add(pick[0]);
+    plan.push(pick);
+  }
+  return plan;
+}
+function configureArcade(run) {
+  const st = run.stage, boss = st === BOSS;
+  const [baseId, target] = boss ? ["b30-900", 900] : run.plan[st - 1];
+  const base = BY_ID[baseId];
+  Object.keys(ARCADE).forEach(k => { if (!ARCADE_KEEP.has(k)) delete ARCADE[k]; });
+  Object.keys(base).forEach(k => { if (!ARCADE_SKIP.has(k)) ARCADE[k] = base[k]; });
+  Object.assign(ARCADE, {
+    baseId, goals: [target], top: target, need: "any", rows: base.rows, cols: base.cols,
+    label: target.toLocaleString(), labelHtml: target.toLocaleString(),
+    family: boss ? "Boss · Blank and Speed 900" : `Stage ${st} · ${base.name}`,
+    ladder: [...(base.ladder || []).filter(v => v < target), target], ladderTitle: "Stage goal",
+    tagline: boss ? "Make a 900. Tiles go blank after 6 moves, and a new tile drops every 10 seconds."
+      : `Make a ${target.toLocaleString()} or more with ${base.name} rules.`
+  });
+  if (boss) Object.assign(ARCADE, { rows: 10, cols: 10, size: 10, blankAfter: BLANK_AFTER, speed: BOSS_SPEED });
+}
+/* ---------- Debug overrides: board size, goals, rungs and spawns per mode ---------- */
+const DEFAULTS = {};
+MODES.forEach(m => { DEFAULTS[m.id] = { rows: m.rows, cols: m.cols, size: m.size, goals: m.goals.slice(), need: m.need, top: m.top,
+  label: m.label, labelHtml: m.labelHtml, ladder: (m.ladder || []).slice(), spawn: m.spawn, spawnFn: m.spawnFn, spawnText: m.spawnText, tagline: m.tagline }; });
+let overrides = {};
+function restoreDefaults(m) { const d = DEFAULTS[m.id]; if (d) Object.assign(m, d, { goals: d.goals.slice(), ladder: d.ladder.slice() }); }
+function applyOverride(m) {
+  const o = overrides[m.id];
+  if (!o || m.arcade) return;
+  if (o.w && !m.dyn) { m.cols = o.w; m.rows = o.h; m.size = Math.max(o.w, o.h); }
+  if (o.goals && o.goals.length) {
+    m.goals = o.goals.slice();
+    m.need = o.need || "any";
+    m.top = Math.max(...m.goals.map(Math.abs));
+    if (!m.count) {
+      const j = m.need === "all" ? "+" : "/";
+      m.label = m.goals.map(fmtV).join(` ${j} `);
+      m.labelHtml = m.goals.map(fmtV).join(`<span class="join">${j}</span>`);
+      m.tagline = null;
+    }
+  }
+  if (o.ladder) m.ladder = o.ladder.slice();
+  if (o.spawn) { m.spawn = o.spawn.map(e => e.slice()); m.spawnFn = undefined; m.spawnText = undefined; }
+}
+const stageName = (run, st) => st === BOSS ? "the boss" : `${BY_ID[run.plan[st - 1][0]].name} to ${run.plan[st - 1][1].toLocaleString()}`;
+
+function tryMerge(m, tiles, turn) {
+  if (m.merge) return m.merge(tiles, turn);
+  const k = tiles[0].k;
+  if (tiles.some(t => t.k !== k)) return null;
+  const vals = tiles.map(t => t.v);
+  if (k === "g") {
+    if (m.garbage === "stay" || tiles.length !== 2 || vals[0] !== vals[1]) return null;
+    return m.garbage === "vanish" ? { destroy: true } : { v: vals[0] * 2, k: "g" };
+  }
+  return m.ok(vals, turn) ? { v: sum(vals), k } : null;
+}
+
+/* ---------- tile colors ----------
+   Most modes: position on a log scale from 1 to the mode's top goal; goals are red.
+   Garbage: grey stripes. XXXX: one hue per lineage, getting darker as the exponent grows. */
+const RAMP = ["#f3f5f6", "#e6ebee", "#d3e4e1", "#9fd3c7", "#5fbfae", "#2fa394", "#1e7f78", "#f2c14e", "#f0a732", "#ea8a1f", "#e4572e", "#c2304f", "#7b2d6b", "#4a2470"];
+const HUES = { 2: 205, 3: 145, 4: 35, 5: 330, 6: 265 };
+const hex = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+const mix = (a, b, t) => { const A = hex(a), B = hex(b); return "#" + A.map((x, i) => Math.round(x + (B[i] - x) * t).toString(16).padStart(2, "0")).join(""); };
+const lum = h => { const [r, g, b] = hex(h).map(x => { x /= 255; return x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4; }); return 0.2126 * r + 0.7152 * g + 0.0722 * b; };
+const colorCache = new Map();
+function colors(v, m, k) {
+  const key = v + "/" + (m.baseId || m.id) + "/" + (k ?? "") + "/" + m.top;
+  if (colorCache.has(key)) return colorCache.get(key);
+  const goal = m.top;
+  let out;
+  if (v < 0) {
+    const t = Math.min(1, Math.log(-v) / Math.log(Math.max(goal, 2)));
+    const L = Math.round(30 - 14 * t);
+    out = { bg: `hsl(232 38% ${L}%)`, fg: "#f2c14e" };
+  } else if (k && m.kindColors && m.kindColors[k]) {
+    out = m.kindColors[k];
+  } else if (m.special && m.special[v]) {
+    out = m.special[v];
+  } else if (m.kindHues) {
+    const t = v <= 1 ? 0 : Math.min(1, Math.log(v) / Math.log(goal));
+    if (k && m.kindHues[k] != null) {
+      const L = Math.round(78 - 46 * t);
+      out = { bg: `hsl(${m.kindHues[k]} 72% ${L}%)`, fg: L < 58 ? "#ffffff" : "#1c262d" };
+    } else {
+      const L = Math.round(93 - 42 * t);
+      out = { bg: `hsl(210 14% ${L}%)`, fg: L < 60 ? "#ffffff" : "#24313a" };
+    }
+  } else if (k === "g") {
+    out = { bg: "repeating-linear-gradient(135deg, #5b656d 0 7px, #4b545b 7px 14px)", fg: "#e6eaed" };
+  } else if (m.hsl) {
+    if (!k) out = { bg: "#e6ebee", fg: "#33424d" };
+    else {
+      const x = Math.log(v) / Math.log(k), xmax = Math.ceil(Math.log(goal) / Math.log(k) - 1e-9);
+      const L = Math.round(84 - 60 * Math.min(1, (x - 1) / Math.max(1, xmax - 1)));
+      out = { bg: `hsl(${HUES[k]} 62% ${L}%)`, fg: L < 56 ? "#ffffff" : "#1c262d" };
+    }
+  } else if (m.goals.includes(v)) out = { bg: RAMP[11], fg: "#ffffff" };
+  else if (v > goal) {
+    const steps = Math.ceil(Math.log(v / goal) / Math.log(goal) * 11 - 1e-9);
+    out = steps >= 3 ? { bg: "#1d1f3d", fg: "#f2c14e" } : { bg: RAMP[11 + Math.max(1, steps)], fg: "#ffffff" };
+  } else {
+    const t = v <= 1 ? 0 : Math.min(10.4, Math.log(v) / Math.log(goal) * 11);
+    const i = Math.floor(t);
+    const bg = mix(RAMP[i], RAMP[Math.min(i + 1, 10)], t - i);
+    out = { bg, fg: lum(bg) > 0.4 ? "#24313a" : "#ffffff" };
+  }
+  colorCache.set(key, out);
+  return out;
+}
+const fmtV = v => v < 0 ? "−" + (-v).toLocaleString() : v.toLocaleString();
+const tileText = (m, v, k) => m.text && k ? m.text(v, k) : fmtV(v);
+const dimsOf = m => `${m.cols}×${m.rows}`;
+const tileStyle = (v, m, k) => { const c = colors(v, m, k); return `--t-bg:${c.bg};--t-fg:${c.fg}`; };
+const pickColor = m => m.hsl ? "hsl(265 55% 45%)" : m.kindHues ? colors(m.goals[0], m, Object.keys(m.kindHues)[0]).bg : colors(m.goals[0], m).bg;
+
+/* ---------- storage ---------- */
+const KEY_GAME = m => "2048:game:" + m;
+const KEY_PREV = m => "2048:prev:" + m;
+const KEY_STATS = "2048:stats";
+const KEY_MODE = "2048:mode";
+const KEY_SET = "2048:settings";
+const KEY_DEBUG = "2048:debug";
+const KEY_OVR = "2048:overrides";
+const store = {
+  get(k) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : null; } catch (e) { return null; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+const $ = id => document.getElementById(id);
+const tilesEl = $("tiles"), overlay = $("overlay"), board = $("board");
+const els = new Map();
+let nextId = 1;
+let mode = "2048";
+let games = {};
+let prev = {};
+let stats = {};
+let confirmTimer = null;
+const M = () => BY_ID[mode];
+const blankStats = () => ({ best: 0, bestTile: 0, bestTileK: null, played: 0, wins: 0, history: [] });
+
+/* ---------- sound ---------- */
+const settings = Object.assign({ sound: true, volume: 60, soundSet: "original" }, store.get(KEY_SET) || {});
+let actx = null;
+function audio() {
+  if (!settings.sound || settings.volume <= 0) return null;
+  try {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    if (actx.state === "suspended") actx.resume();
+  } catch (e) { return null; }
+  return actx;
+}
+function tone(freq, dur, { type = "sine", gain = 0.2, delay = 0, slideTo } = {}) {
+  const c = audio();
+  if (!c) return;
+  const t = c.currentTime + delay, vol = gain * (settings.volume / 100);
+  const o = c.createOscillator(), g = c.createGain();
+  o.type = type;
+  o.frequency.setValueAtTime(freq, t);
+  if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + 0.012);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g).connect(c.destination);
+  o.start(t); o.stop(t + dur + 0.03);
+}
+const PENTA = [0, 2, 4, 7, 9];
+const SOUND_SETS = {
+  original: {
+    slide: () => tone(180, 0.07, { type: "triangle", gain: 0.07, slideTo: 140 }),
+    merge: f => { tone(f, 0.16, { gain: 0.2 }); tone(f * 2, 0.1, { type: "triangle", gain: 0.05, delay: 0.01 }); },
+    bump: () => tone(110, 0.14, { type: "square", gain: 0.05, slideTo: 80 }),
+    win: () => [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.28, { type: "triangle", gain: 0.16, delay: i * 0.11 })),
+    over: () => [392, 330, 262].forEach((f, i) => tone(f, 0.32, { gain: 0.14, delay: i * 0.16 }))
+  },
+  chip: {
+    slide: () => tone(240, 0.035, { type: "square", gain: 0.035 }),
+    merge: f => { tone(f, 0.07, { type: "square", gain: 0.08 }); tone(f * 1.5, 0.07, { type: "square", gain: 0.06, delay: 0.06 }); },
+    bump: () => tone(90, 0.1, { type: "square", gain: 0.06 }),
+    win: () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.09, { type: "square", gain: 0.08, delay: i * 0.07 })),
+    over: () => [330, 294, 262, 196].forEach((f, i) => tone(f, 0.12, { type: "square", gain: 0.07, delay: i * 0.12 }))
+  },
+  chimes: {
+    slide: () => tone(1760, 0.06, { gain: 0.015 }),
+    merge: f => { tone(f * 2, 0.8, { gain: 0.11 }); tone(f * 4, 0.5, { gain: 0.035, delay: 0.004 }); tone(f * 6, 0.3, { gain: 0.015, delay: 0.008 }); },
+    bump: () => tone(440, 0.4, { gain: 0.04, slideTo: 415 }),
+    win: () => [1047, 1319, 1568, 2093].forEach((f, i) => tone(f, 1.1, { gain: 0.08, delay: i * 0.14 })),
+    over: () => [784, 659, 523].forEach((f, i) => tone(f, 0.9, { gain: 0.07, delay: i * 0.22 }))
+  },
+  wood: {
+    slide: () => tone(320, 0.03, { type: "triangle", gain: 0.07, slideTo: 260 }),
+    merge: f => tone(f * 0.75, 0.08, { type: "triangle", gain: 0.28, slideTo: f * 0.55 }),
+    bump: () => tone(140, 0.05, { type: "triangle", gain: 0.2, slideTo: 100 }),
+    win: () => [392, 523, 659, 784].forEach((f, i) => tone(f, 0.09, { type: "triangle", gain: 0.25, delay: i * 0.1, slideTo: f * 0.7 })),
+    over: () => [262, 196, 147].forEach((f, i) => tone(f, 0.1, { type: "triangle", gain: 0.25, delay: i * 0.18, slideTo: f * 0.7 }))
+  },
+  bubbles: {
+    slide: () => tone(260, 0.07, { gain: 0.05, slideTo: 420 }),
+    merge: f => tone(f * 0.8, 0.15, { gain: 0.18, slideTo: f * 1.8 }),
+    bump: () => tone(200, 0.12, { gain: 0.06, slideTo: 120 }),
+    win: () => [400, 500, 650, 850, 1100].forEach((f, i) => tone(f, 0.12, { gain: 0.14, delay: i * 0.08, slideTo: f * 1.6 })),
+    over: () => [600, 450, 300].forEach((f, i) => tone(f, 0.2, { gain: 0.12, delay: i * 0.15, slideTo: f * 0.6 }))
+  }
+};
+const soundSet = () => SOUND_SETS[settings.soundSet] || SOUND_SETS.original;
+const sfx = {
+  slide() { soundSet().slide(); },
+  merge(v, m) {
+    const rank = Math.max(0, Math.round(Math.log(Math.max(v, 1)) / Math.log(Math.max(m.top, 2)) * 14));
+    soundSet().merge(262 * 2 ** ((PENTA[rank % 5] + 12 * Math.floor(rank / 5)) / 12));
+  },
+  garbage() { soundSet().bump(); },
+  win() { soundSet().win(); },
+  over() { soundSet().over(); }
+};
+
+/* ---------- game logic ---------- */
+function pickSpawn(spawn) {
+  const total = spawn.reduce((s, e) => s + e[1], 0);
+  let r = Math.random() * total;
+  for (const e of spawn) { if ((r -= e[1]) < 0) return e; }
+  return spawn[0];
+}
+function spawn(g, m) {
+  const n = m.cols;
+  const taken = new Set(g.tiles.map(t => t.r * n + t.c));
+  const free = [];
+  for (let i = 0; i < m.rows * m.cols; i++) if (!taken.has(i)) free.push(i);
+  if (!free.length) return;
+  const i = free[Math.floor(Math.random() * free.length)];
+  const [v, , k] = m.spawnFn ? m.spawnFn(g, m) : pickSpawn(m.spawn);
+  const t = { id: nextId++, v, r: Math.floor(i / n), c: i % n, born: g.moves };
+  if (k) t.k = k;
+  g.tiles.push(t);
+  return t;
+}
+function newGame(m) {
+  const g = { tiles: [], score: 0, moves: 0, won: false, keepGoing: false, over: false, made: [], bigs: [] };
+  if (m.dyn) { g.w = m.cols; g.h = m.rows; }
+  spawn(g, m); spawn(g, m);
+  return g;
+}
+function newArcadeRun(phase) {
+  const run = { stage: 1, plan: planRun(), lives: 3, runScore: 0, prevBest: stats.arcade ? stats.arcade.best : 0, extraGiven: false, phase, clock: 0 };
+  configureArcade(run);
+  const g = newGame(ARCADE);
+  g.arcade = run;
+  return g;
+}
+const makeGame = id => id === "arcade" ? newArcadeRun("intro") : newGame(BY_ID[id]);
+const mag = (v, m) => m && m.absTop ? Math.abs(v) : v;
+const isOp = t => t.k === "g" || t.k === "d";
+const topT = (g, m = M()) => g.tiles.reduce((x, t) => !isOp(t) && (!x || mag(t.v, m) > mag(x.v, m)) ? t : x, null);
+const topTile = (g, m = M()) => (topT(g, m) || { v: 0 }).v;
+
+// Pure: returns the board after sliding, without changing g.
+function slide(g, m, dir, turn = g.moves + 1) {
+  const R = m.rows, C = m.cols, horiz = dir === "left" || dir === "right";
+  const lines = horiz ? R : C, len = horiz ? C : R;
+  const grid = Array.from({ length: R }, () => Array(C).fill(null));
+  g.tiles.forEach(t => { if (t.r < R && t.c < C) grid[t.r][t.c] = t; });
+  const cellAt = (line, k) => dir === "left" ? [line, k] : dir === "right" ? [line, C - 1 - k] : dir === "up" ? [k, line] : [R - 1 - k, line];
+  const tiles = [], dying = [], merges = [];
+  let moved = false, gained = 0, destroyed = 0;
+
+  for (let line = 0; line < lines; line++) {
+    const row = [];
+    for (let k = 0; k < len; k++) { const [r, c] = cellAt(line, k); if (grid[r][c]) row.push(grid[r][c]); }
+    let i = 0, slot = 0;
+    while (i < row.length) {
+      const [r, c] = cellAt(line, slot++);
+      let used = 0, res = null;
+      if (m.runs) {
+        // A line of equal tiles merges only as a whole, and only at the allowed lengths.
+        let run = 1;
+        while (i + run < row.length && row[i + run].v === row[i].v) run++;
+        if (m.runs.includes(run)) { used = run; res = { v: row[i].v * run }; }
+        else {
+          for (let j = 0; j < run; j++) {
+            const [rr, cc] = j === 0 ? [r, c] : cellAt(line, slot++);
+            const a = row[i + j];
+            if (a.r !== rr || a.c !== cc) moved = true;
+            tiles.push({ id: a.id, v: a.v, r: rr, c: cc, born: a.born });
+          }
+          i += run;
+          continue;
+        }
+      } else {
+        for (let k = Math.min(m.maxK, row.length - i); k >= 2; k--) {
+          res = tryMerge(m, row.slice(i, i + k), turn);
+          if (res) { used = k; break; }
+        }
+      }
+      if (used && res.destroy) {
+        row.slice(i, i + used).forEach(t => dying.push({ id: t.id, r, c }));
+        moved = true; i += used; slot--;
+        destroyed++;
+      } else if (used) {
+        row.slice(i, i + used).forEach(t => dying.push({ id: t.id, r, c }));
+        const t = { id: nextId++, v: res.v, r, c, merged: true, born: turn };
+        if (res.k) t.k = res.k;
+        tiles.push(t);
+        merges.push(t);
+        gained += Math.abs(res.v); moved = true; i += used;
+      } else {
+        const a = row[i];
+        if (a.r !== r || a.c !== c) moved = true;
+        const t = { id: a.id, v: a.v, r, c, born: a.born };
+        if (a.k) t.k = a.k;
+        tiles.push(t);
+        i++;
+      }
+    }
+  }
+  return { tiles, dying, moved, gained, merges, destroyed };
+}
+function canMove(g, m) {
+  if (g.tiles.length < m.rows * m.cols) return true;
+  const probe = nextId;
+  const ok = ["left", "right", "up", "down"].some(d => slide(g, m, d).moved);
+  nextId = probe;
+  return ok;
+}
+function checkWin(g, m, merges = []) {
+  if (m.count) {
+    merges.forEach(t => { if (m.countIf ? m.countIf(t.v) : t.v >= m.top) g.bigs.push({ v: t.v, k: t.k }); });
+    return g.bigs.length >= m.count;
+  }
+  if (m.together) {
+    g.made = m.goals.filter(goal => g.tiles.some(t => t.v === goal));
+    return g.made.length === m.goals.length;
+  }
+  m.goals.forEach(goal => {
+    if (g.made.includes(goal)) return;
+    if (g.tiles.some(t => !isOp(t) && (m.goals.length === 1 ? mag(t.v, m) >= goal : t.v === goal))) g.made.push(goal);
+  });
+  return m.need === "all" ? m.goals.every(x => g.made.includes(x)) : g.made.length > 0;
+}
+
+function move(dir) {
+  const m = M(), g = games[mode];
+  if (m.arcade && (!g.arcade || g.arcade.phase !== "play")) return;
+  if (g.over || (g.won && !g.keepGoing)) return;
+  const res = slide(g, m, dir);
+  if (!res.moved) return;
+  g.tiles = res.tiles;
+  g.score += Math.round(res.gained);
+  g.moves++;
+  spawn(g, m);
+
+  const s = stats[mode], top = topT(g);
+  const total = m.arcade ? g.arcade.runScore + g.score : g.score;
+  if (total > s.best) s.best = total;
+  if (top && top.v > s.bestTile) { s.bestTile = top.v; s.bestTileK = top.k || null; }
+  debugProgress(mode, res.merges, g);
+  if (m.arcade) {
+    const run = g.arcade;
+    if (!run.extraGiven && run.prevBest > 0 && total > run.prevBest) { run.lives++; run.extraGiven = true; }
+  }
+  const winning = checkWin(g, m, res.merges);
+  const justWon = !g.won && winning;
+  if (justWon) g.won = true;
+  if (m.arcade) { if (justWon) arcadeClear(g); else if (!canMove(g, m)) arcadeFail(g); }
+  else if (!canMove(g, m)) { g.over = true; record(g, g.won ? "won" : "over"); }
+
+  if (justWon) sfx.win();
+  else if (g.over) sfx.over();
+  else if (res.merges.length) {
+    const plain = res.merges.filter(t => t.k !== "g");
+    if (plain.length) sfx.merge(Math.max(...plain.map(t => Math.abs(t.v))), m); else sfx.garbage();
+  } else if (res.destroyed) sfx.garbage();
+  else sfx.slide();
+
+  render(res.dying);
+  if (res.gained) showGain(res.gained);
+  save();
+  if (!$("saves").hidden) renderSaves();
+}
+
+// Secret: five steps, in order, unlock debugMode.
+//   1. three 128s in 2048   2. a 243 in Powers of 3   3. a 1250 in Powers of 5
+//   4. a tile of 723+ in 1762 while the top tile is at most 1400   5. a tile above 120 in 180 while the top tile is under 210
+let debugMode = false;
+const debugState = Object.assign({ step: 0, made128: 0 }, store.get(KEY_DEBUG) || {});
+debugMode = debugState.step >= 5;
+window.debugMode = debugMode;
+function debugProgress(id, merges, g) {
+  if (debugMode || !merges.length) return;
+  const vals = merges.map(t => t.v), top = Math.max(...g.tiles.map(t => t.v));
+  const st = debugState.step;
+  let advanced = false;
+  if (st === 0 && id === "2048") {
+    debugState.made128 += vals.filter(v => v === 128).length;
+    if (debugState.made128 >= 3) { debugState.step = 1; advanced = true; }
+  } else if (st === 1 && id === "b3-2187" && vals.includes(243)) { debugState.step = 2; advanced = true; }
+  else if (st === 2 && id === "b5-3125" && vals.includes(1250)) { debugState.step = 3; advanced = true; }
+  else if (st === 3 && id === "n-1762" && vals.some(v => v >= 723) && top <= 1400) { debugState.step = 4; advanced = true; }
+  else if (st === 4 && id === "r-180" && vals.some(v => v > 120) && top < 210) { debugState.step = 5; advanced = true; }
+  store.set(KEY_DEBUG, debugState);
+  if (advanced && debugState.step >= 5) {
+    debugMode = true;
+    window.debugMode = true;
+    $("debugRow").hidden = false;
+    $("debugBtn").hidden = false;
+    console.log("debugMode = true");
+  }
+}
+function arcadeClear(g) {
+  const run = g.arcade;
+  run.runScore += g.score; g.score = 0;
+  if (run.stage === BOSS) { run.phase = "done"; recordRun(g, "won"); }
+  else run.phase = "clear";
+}
+function arcadeFail(g) {
+  const run = g.arcade;
+  g.over = true;
+  run.runScore += g.score; g.score = 0;
+  run.lives--;
+  if (run.lives > 0) run.phase = "failed";
+  else { run.phase = "over"; recordRun(g, "over"); }
+}
+function recordRun(g, result) {
+  const run = g.arcade, s = stats.arcade, top = topT(g, ARCADE);
+  s.played++;
+  if (result === "won") s.wins++;
+  if (run.runScore > s.best) s.best = run.runScore;
+  const where = run.stage === BOSS ? "the boss" : `stage ${run.stage}`;
+  s.history.unshift({ score: run.runScore, tile: top ? top.v : 0, tk: top && top.k || null, moves: g.moves, at: Date.now(), result,
+    note: result === "won" ? "Beat the boss" : result === "quit" ? `Quit at ${where}` : `Ended at ${where}` });
+  s.history = s.history.slice(0, 10);
+}
+function startArcadeStage(run) {
+  run.phase = "play"; run.clock = 0;
+  configureArcade(run);
+  const g = newGame(ARCADE);
+  g.arcade = run;
+  games.arcade = g;
+  setupBoard();
+  save();
+  board.focus();
+}
+function record(g, result) {
+  const s = stats[mode], top = topT(g);
+  s.played++;
+  if (g.won) s.wins++;
+  s.history.unshift({ score: g.score, tile: top ? top.v : 0, tk: top && top.k || null, moves: g.moves, at: Date.now(), result, ...(g.w ? { dims: `${g.w}×${g.h}` } : {}) });
+  s.history = s.history.slice(0, 10);
+}
+
+/* ---------- save codes ---------- */
+const packTile = t => ({ v: t.v, r: t.r, c: t.c, ...(t.k ? { k: t.k } : {}), ...(t.born != null ? { b: t.born } : {}) });
+const packGame = g => ({ tiles: g.tiles.map(packTile), score: g.score, moves: g.moves, won: g.won, keepGoing: g.keepGoing, over: g.over, made: g.made || [], bigs: g.bigs || [], ...(g.bag ? { bag: g.bag.slice() } : {}), ...(g.w ? { w: g.w, h: g.h } : {}), ...(g.arcade ? { arcade: g.arcade } : {}) });
+function encode(id, g) {
+  const p = packGame(g);
+  const data = { v: 2, m: id, t: p.tiles.map(t => t.k ? [t.r, t.c, t.v, t.k] : [t.r, t.c, t.v]), s: p.score, n: p.moves, w: +p.won, k: +p.keepGoing, o: +p.over, d: p.made };
+  if (p.bigs.length) data.b = p.bigs.map(b => [b.v, b.k]);
+  if (p.bag) data.q = p.bag;
+  if (p.w) { data.x = p.w; data.y = p.h; }
+  return btoa(JSON.stringify(data));
+}
+function decode(code) {
+  const clean = String(code || "").replace(/\s+/g, "");
+  if (!clean) throw new Error("Paste a save code first.");
+  let data;
+  try { data = JSON.parse(atob(clean)); } catch (e) { throw new Error("That isn't a save code from this game. Check that you copied all of it."); }
+  const m = BY_ID[data && data.m];
+  if (!m) throw new Error("That code is for a mode this page doesn't have.");
+  if (m.arcade) throw new Error("Arcade runs can't be loaded from a code.");
+  if (!Array.isArray(data.t)) throw new Error("That code has no board in it.");
+  const kinds = m.kinds || [];
+  const dim = q => Number.isInteger(q) && q >= 2 && q <= 8 ? q : 4;
+  const W = m.dyn ? dim(data.x) : m.cols, H = m.dyn ? dim(data.y) : m.rows;
+  const seen = new Set();
+  const tiles = data.t.map(x => {
+    const [r, c, v, k] = Array.isArray(x) ? x : [];
+    const okCell = Number.isInteger(r) && Number.isInteger(c) && r >= 0 && c >= 0 && r < H && c < W;
+    const okKind = k == null || (m.kindOk ? m.kindOk(k, v) : kinds.includes(k));
+    if (!okCell || typeof v !== "number" || !isFinite(v) || (!Number.isInteger(v) && !m.floatOk) || v === 0 || (v < 0 && !m.neg) || seen.has(r * W + c) || !okKind)
+      throw new Error("That code has a tile that doesn't fit this mode. It may be damaged.");
+    seen.add(r * W + c);
+    const t = { id: nextId++, v, r, c };
+    if (k != null) t.k = k;
+    return t;
+  });
+  const num = x => Number.isFinite(+x) && +x >= 0 ? Math.floor(+x) : 0;
+  const bigs = Array.isArray(data.b) ? data.b.filter(b => Array.isArray(b) && Number.isInteger(b[0])).map(([v, k]) => ({ v, k })) : [];
+  return { mode: m.id, game: { tiles, score: num(data.s), moves: num(data.n), won: !!data.w, keepGoing: !!data.k, over: !!data.o,
+    made: Array.isArray(data.d) ? data.d.filter(x => m.goals.includes(x)) : [], bigs,
+    ...(Array.isArray(data.q) ? { bag: data.q.filter(x => Number.isInteger(x) && x > 0) } : {}), ...(m.dyn ? { w: W, h: H } : {}) } };
+}
+const describe = (id, g) => `${BY_ID[id].label} ${BY_ID[id].name} · ${g.score.toLocaleString()} pts · top ${fmtV(topTile(g, BY_ID[id]))} · ${g.moves} moves`;
+
+/* ---------- rendering ---------- */
+function fontFor(text, n) {
+  const d = String(text).replace(/,/g, "").length;
+  const base = d <= 2 ? 11 : d === 3 ? 9 : d === 4 ? 7.2 : d === 5 ? 5.8 : 4.8;
+  return (base * 4 / n).toFixed(2) + "cqi";
+}
+function render(dying = [], instant = false) {
+  const g = games[mode], m = M();
+  dying.forEach(d => {
+    const el = els.get(d.id);
+    if (!el) return;
+    els.delete(d.id);
+    el.classList.add("dying");
+    el.style.setProperty("--r", d.r);
+    el.style.setProperty("--c", d.c);
+    setTimeout(() => el.remove(), 130);
+  });
+  const live = new Set();
+  g.tiles.forEach(t => {
+    live.add(t.id);
+    let el = els.get(t.id);
+    if (!el) {
+      el = document.createElement("div");
+      el.className = "tile" + (instant ? "" : t.merged ? " merged" : " new");
+      el.style.cssText = tileStyle(t.v, m, t.k);
+      if (t.k === "g") el.title = "Garbage tile";
+      const inner = el.appendChild(document.createElement("div"));
+      inner.className = "in";
+      const label = tileText(m, t.v, t.k);
+      inner.style.fontSize = fontFor(label, m.cols);
+      inner.textContent = label;
+      if (m.barSet && t.v >= m.barBase) {
+        inner.classList.add("has-bars");
+        const bars = inner.appendChild(document.createElement("div"));
+        bars.className = "bars";
+        bars.setAttribute("aria-label", "Filled: " + (m.barSet.filter((b, i) => (t.k || 0) & (1 << i)).map(b => b.label).join(", ") || "none"));
+        m.barSet.forEach((b, i) => { const x = bars.appendChild(document.createElement("i")); x.style.setProperty("--c", b.color); if ((t.k || 0) & (1 << i)) x.className = "on"; });
+      }
+      const sub = m.sub && m.sub(t.v, t.k);
+      if (sub) {
+        inner.classList.add("has-sub");
+        const sd = inner.appendChild(document.createElement("div"));
+        sd.className = "sub";
+        sd.style.fontSize = (2.6 * 4 / m.cols).toFixed(2) + "cqi";
+        sd.textContent = sub;
+      }
+      els.set(t.id, el);
+      tilesEl.appendChild(el);
+    }
+    el.style.setProperty("--r", t.r);
+    el.style.setProperty("--c", t.c);
+    el.classList.toggle("blank", !!m.blankAfter && g.moves - (t.born ?? g.moves) >= m.blankAfter);
+  });
+  for (const [id, el] of els) if (!live.has(id)) { el.remove(); els.delete(id); }
+
+  $("score").textContent = (m.arcade && g.arcade ? g.arcade.runScore + g.score : g.score).toLocaleString();
+  $("best").textContent = stats[mode].best.toLocaleString();
+  renderArcadeHud(g, m);
+  if (m.turnHint) $("tagline").textContent = m.turnHint(g.moves + 1);
+  renderOverlay();
+  renderLadder();
+  renderStats();
+}
+
+function setDims(m, w, h) {
+  m.cols = w; m.rows = h;
+  const goal = 2 ** Math.max(3, Math.round(7 + (w * h - 9) * 4 / 7));
+  m.goals = [goal]; m.top = goal;
+  m.label = m.labelHtml = goal.toLocaleString();
+  m.ladder = powLadder(2, 2, goal);
+  m.examples = p2Ex(goal);
+}
+const dynGoal = (w, h) => 2 ** Math.max(3, Math.round(7 + (w * h - 9) * 4 / 7));
+function setupBoard() {
+  const m = M(), g = games[mode];
+  if (m.arcade && g.arcade) configureArcade(g.arcade);
+  if (m.dyn) setDims(m, g.w || 4, g.h || 4);
+  applyOverride(m);
+  const big = Math.max(m.rows, m.cols);
+  board.style.setProperty("--cols", m.cols);
+  board.style.setProperty("--rows", m.rows);
+  board.style.setProperty("--ar", m.cols / m.rows);
+  board.style.maxWidth = m.rows > m.cols ? `min(100%, ${Math.round(500 * m.cols / m.rows)}px)` : "";
+  board.style.setProperty("--gap", { 2: "14px", 3: "12px", 4: "10px", 5: "8px", 6: "7px", 7: "6px", 8: "5px" }[big] || "6px");
+  if (m.boardBg) { board.style.setProperty("--board", m.boardBg); board.style.setProperty("--cell", m.cellBg); }
+  else { board.style.removeProperty("--board"); board.style.removeProperty("--cell"); }
+  $("dims").hidden = !m.dyn;
+  if (m.dyn) { $("dimW").value = m.cols; $("dimH").value = m.rows; updateDimGoal(); }
+  if (!$("debugPanel").hidden) fillDebug();
+  $("cells").innerHTML = "<div></div>".repeat(m.rows * m.cols);
+  for (const el of els.values()) el.remove();
+  els.clear();
+  tilesEl.innerHTML = "";
+  renderModeInfo();
+  render([], true);
+  if (!$("saves").hidden) renderSaves();
+}
+
+const tv = x => Array.isArray(x) ? { v: x[0], k: x[1] } : { v: x };
+function renderModeInfo() {
+  const m = M();
+  $("modeLine").textContent = `${m.family} · ${dimsOf(m)}`;
+  $("goalNum").innerHTML = m.labelHtml;
+  $("goalNum").classList.toggle("long", m.goals.length > 1);
+  const gl = m.goals.map(x => x.toLocaleString());
+  $("tagline").textContent = m.tagline ? m.tagline
+    : m.count ? `Make ${m.count} tiles of ${m.top.toLocaleString()} or more.`
+    : m.id === "ps-576" ? "Slide and merge tiles to reach 576 or more."
+    : m.together ? `Have a ${gl[0]} and a ${gl[1]} on the board at the same time.`
+    : m.need === "all" ? `Slide and merge tiles. Make both a ${gl[0]} and a ${gl[1]}.`
+    : m.goals.length > 1 ? `Slide and merge tiles. Make ${gl.slice(0, -1).map(x => "a " + x).join(", ")} or a ${gl[gl.length - 1]}.`
+    : `Slide and merge tiles to reach ${m.label}.`;
+  $("modeBtnGoal").textContent = m.arcade ? "Arcade" : m.label;
+  $("modeBtnName").textContent = `${m.name} · ${dimsOf(m)}`;
+  $("ruleText").textContent = m.rule;
+  $("examples").innerHTML = m.examples.map(([ins, out]) => {
+    const parts = ins.map(x => { const t = tv(x); return chip(t.v, m, t.k); }).join('<span class="op">+</span>');
+    if (out === "gone") return `<span class="ex">${parts}<span class="op">→</span><span class="op">both gone</span></span>`;
+    if (!out) return `<span class="ex no">${parts}<span class="x" aria-label="no merge">✕</span></span>`;
+    const o = tv(out);
+    return `<span class="ex">${parts}<span class="op">→</span>${chip(o.v, m, o.k)}</span>`;
+  }).join("");
+  const pct = p => Math.abs(p - Math.round(p)) < 1e-9 ? Math.round(p) + "%" : p.toFixed(1) + "%";
+  const lg = $("legend");
+  lg.hidden = !m.legend;
+  lg.innerHTML = m.legend ? "Bars: " + m.legend.map(([c, l]) => `<span><i style="--c:${c}"></i>${l}</span>`).join("") : "";
+  const kindName = k => k === "g" ? "garbage " : m.kindNames && m.kindNames[k] ? m.kindNames[k] + " " : "";
+  const wsum = m.spawn.reduce((a, e) => a + e[1], 0) || 1;
+  $("spawnText").textContent = m.spawnText || "New tiles: " + m.spawn.map(([v, p, k, lbl]) => `${kindName(k)}${fmtV(v)} (${lbl || pct(p * 100 / wsum)})`).join(", ");
+  $("ladderTitle").textContent = m.ladderTitle || "Goal ladder";
+  $("histTitle").textContent = m.arcade ? "Arcade runs" : `${m.name} · ${m.label}`;
+}
+
+function renderArcadeHud(g, m) {
+  const el = $("arcadeHud");
+  if (!m.arcade || !g.arcade) { el.hidden = true; return; }
+  const run = g.arcade;
+  el.hidden = false;
+  const strip = Array.from({ length: BOSS }, (_, i) => {
+    const n = i + 1, finished = n < run.stage || (n === run.stage && (run.phase === "clear" || run.phase === "done"));
+    const cls = [finished ? "done" : n === run.stage ? "now" : "", n === BOSS ? "boss" : ""].join(" ").trim();
+    return `<span class="${cls}" title="${n === BOSS ? "Boss" : "Stage " + n}">${n === BOSS ? "Boss" : n}</span>`;
+  }).join("");
+  el.innerHTML = `<div class="arcade-top"><b>${run.stage === BOSS ? "Boss stage" : `Stage ${run.stage} of 12`}</b>
+    <span class="lives" aria-label="${run.lives} lives">${"♥".repeat(Math.max(0, run.lives))}</span>
+    ${ARCADE.speed ? '<span class="arcade-timer" id="arcTimer"></span>' : ""}</div>
+    <div class="stages">${strip}</div>
+    ${run.extraGiven ? '<div class="arcade-note">New best run score: you earned an extra life.</div>' : ""}`;
+  updateArcadeTimer();
+}
+function updateArcadeTimer() {
+  const el = $("arcTimer"), run = games.arcade && games.arcade.arcade;
+  if (!el || !run || !ARCADE.speed) return;
+  el.textContent = run.phase === "play" ? `New tile in ${Math.max(0, Math.ceil((ARCADE.speed - (run.clock || 0)) / 1000))}s` : "";
+}
+function renderArcadeOverlay(g) {
+  const run = g.arcade, total = run.runScore + g.score;
+  const show = (h, p, btn, id, fn) => {
+    overlay.innerHTML = `<h2>${h}</h2><p>${p}</p><div class="row"><button class="btn" id="${id}">${btn}</button></div>`;
+    overlay.hidden = false;
+    $(id).onclick = fn;
+  };
+  const freshRun = () => { games.arcade = newArcadeRun("play"); setupBoard(); save(); board.focus(); };
+  if (run.phase === "intro") show("Arcade", `12 stages across different modes, then a boss on a 10×10 board. You have 3 lives, and beating your best run score earns one more. First up: ${stageName(run, 1)}.`,
+    "Start run", "arcGo", () => { run.phase = "play"; save(); render(); board.focus(); });
+  else if (run.phase === "clear") show(`Stage ${run.stage} clear`, `Run score ${total.toLocaleString()}. Next: ${stageName(run, run.stage + 1)}.`,
+    run.stage + 1 === BOSS ? "Face the boss" : "Next stage", "arcNext", () => { run.stage++; startArcadeStage(run); });
+  else if (run.phase === "failed") show("Out of moves", `You lost a life. ${run.lives} ${run.lives === 1 ? "life" : "lives"} left.`,
+    `Retry ${run.stage === BOSS ? "the boss" : "stage " + run.stage}`, "arcRetry", () => startArcadeStage(run));
+  else if (run.phase === "over") show("Game over", `Run score ${total.toLocaleString()}. You reached ${run.stage === BOSS ? "the boss" : "stage " + run.stage}.`, "New run", "arcNew", freshRun);
+  else if (run.phase === "done") show("You beat Blank and Speed 900", `Run complete. Run score ${total.toLocaleString()}.`, "New run", "arcNew", freshRun);
+  else { overlay.hidden = true; overlay.innerHTML = ""; }
+}
+function renderOverlay() {
+  const m = M(), g = games[mode];
+  if (m.arcade && g.arcade) { renderArcadeOverlay(g); return; }
+  if (g.won && !g.keepGoing && !g.over) {
+    const head = m.count ? (m.winText || `You made ${m.count} tiles of ${m.top.toLocaleString()}+`)
+      : m.need === "all" ? `You made ${m.goals.map(x => x.toLocaleString()).join(" and ")}`
+      : m.goals.length > 1 ? `You made ${g.made.map(x => x.toLocaleString()).join(" and ")}`
+      : `You made ${fmtV(topTile(g))}`;
+    overlay.innerHTML = `<h2>${head}</h2><p>${g.score.toLocaleString()} points in ${g.moves} moves.</p>
+      <div class="row"><button class="btn" id="ovKeep">Keep going</button><button class="btn ghost" id="ovNew">New game</button></div>`;
+    overlay.hidden = false;
+    $("ovKeep").onclick = () => { g.keepGoing = true; save(); renderOverlay(); board.focus(); };
+    $("ovNew").onclick = () => startNew(true);
+  } else if (g.over) {
+    overlay.innerHTML = `<h2>${g.won ? "Board full. Goal reached." : "No moves left"}</h2>
+      <p>${g.score.toLocaleString()} points · top tile ${topTile(g).toLocaleString()} · ${g.moves} moves</p>
+      <div class="row"><button class="btn" id="ovNew">Play again</button></div>`;
+    overlay.hidden = false;
+    $("ovNew").onclick = () => startNew(true);
+  } else {
+    overlay.hidden = true;
+    overlay.innerHTML = "";
+  }
+}
+
+function renderLadder() {
+  const m = M(), g = games[mode], top = mag(topTile(g), m);
+  if (m.count) {
+    const slots = [];
+    for (let i = 0; i < Math.max(m.count, g.bigs.length); i++) {
+      const b = g.bigs[i];
+      slots.push(b ? `<span class="rung hit target" style="${tileStyle(b.v, m, b.k)}">${b.v.toLocaleString()}</span>`
+                   : `<span class="rung target">${m.slotLabel || m.top.toLocaleString() + "+"}</span>`);
+    }
+    $("rungs").innerHTML = slots.join("");
+    $("ladderNote").textContent = `${Math.min(g.bigs.length, m.count)} of ${m.count} made`;
+    return;
+  }
+  const onBoard = new Set(g.tiles.filter(t => t.k !== "g").map(t => t.v));
+  const rungs = m.ladder.slice();
+  if (top > m.top && !rungs.includes(top)) rungs.push(top);
+  const isHit = v => m.goals.length > 1 ? (onBoard.has(v) || g.made.includes(v) || top > v && !m.goals.includes(v)) : v <= top;
+  $("rungs").innerHTML = rungs.map(v => {
+    const cls = ["rung"];
+    if (isHit(v)) cls.push("hit");
+    if (m.goals.includes(v)) cls.push("target");
+    return `<span class="${cls.join(" ")}" style="${tileStyle(v, m)}">${v.toLocaleString()}</span>`;
+  }).join("");
+  let note;
+  if (m.goals.length > 1) {
+    note = m.goals.map(x => `${x.toLocaleString()} ${g.made.includes(x) ? (m.together ? "on board" : "made") : "not yet"}`).join(" · ");
+  } else {
+    const left = m.ladder.filter(v => v > top).length;
+    note = top > m.top ? `Past the goal at ${top.toLocaleString()}` : left === 0 ? "Goal reached" : `${left} rung${left === 1 ? "" : "s"} to go`;
+  }
+  $("ladderNote").textContent = note;
+}
+
+function chip(v, m, k) {
+  if (!v) return `<span class="chip">–</span>`;
+  return `<span class="chip" style="${tileStyle(v, m, k)}">${tileText(m, v, k)}</span>`;
+}
+
+function renderStats() {
+  let lastGroup = "";
+  $("statsBody").innerHTML = MODES.map(m => {
+    const s = stats[m.id];
+    const head = m.group !== lastGroup ? `<tr class="group"><th colspan="5">${m.group}</th></tr>` : "";
+    lastGroup = m.group;
+    return head + `<tr class="${m.id === mode ? "current" : ""}"><td><b>${m.arcade ? "Arcade" : m.label}</b><span class="mname">${m.arcade ? "12 stages + boss" : m.name + " · " + (m.dyn ? "custom" : dimsOf(m))}</span></td>
+      <td>${s.best.toLocaleString()}</td><td>${chip(s.bestTile, m, s.bestTileK)}</td><td>${s.played}</td><td>${s.wins}</td></tr>`;
+  }).join("");
+
+  const h = stats[mode].history, m = M();
+  const label = { won: m.count ? `Made ${m.count}` : m.need === "all" ? "Made both" : "Reached goal", over: "Board full", quit: "Restarted" };
+  $("history").innerHTML = h.length ? h.map(e => {
+    const d = new Date(e.at);
+    const when = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    return `<li><div><div class="pts">${e.score.toLocaleString()}</div><div class="when">${when} · ${e.moves} moves${e.dims ? " · " + e.dims : ""}</div></div>
+      ${chip(e.tile, m, e.tk)}<span class="badge${e.result === "won" ? " won" : ""}">${e.note || label[e.result]}</span></li>`;
+  }).join("") : `<li class="empty">Finished games for this mode show up here.</li>`;
+
+  if (!$("picker").hidden) renderPicker();
+}
+
+function renderPicker() {
+  const groups = [...new Set(MODES.map(m => m.group))];
+  $("picker").innerHTML = groups.map(gname => `<div class="pgroup"><div class="eyebrow">${gname}</div><div class="pgrid">` +
+    MODES.filter(m => m.group === gname).map(m => {
+      const best = stats[m.id].best;
+      return `<button class="pick" id="pick-${m.id}" data-mode="${m.id}" aria-pressed="${m.id === mode}">
+        <b class="${m.goals.length > 1 || m.arcade ? "long" : ""}" style="color:${m.arcade ? "var(--accent)" : pickColor(m)}">${m.arcade ? "Arcade" : m.label}</b>
+        <span class="nm">${m.name}</span>
+        <span class="meta">${m.arcade ? "12 stages + boss" : m.dyn ? "any size" : dimsOf(m)}${best ? " · best " + best.toLocaleString() : ""}</span></button>`;
+    }).join("") + `</div></div>`).join("");
+  $("picker").querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => { setMode(b.dataset.mode); openPanel(null); board.focus(); }));
+}
+
+function renderSaves() {
+  const g = games[mode];
+  const arc = !!M().arcade;
+  ["copyCur", "saveCur"].forEach(id => $(id).disabled = arc);
+  if (arc) { $("curCode").value = ""; $("curInfo").textContent = "Save codes aren't available in Arcade."; $("prevBlock").hidden = true; return; }
+  $("curCode").value = encode(mode, g);
+  $("curInfo").textContent = describe(mode, g);
+  const p = prev[mode];
+  $("prevBlock").hidden = !p;
+  if (p) { $("prevCode").value = encode(mode, p); $("prevInfo").textContent = describe(mode, p); }
+}
+
+const PANELS = { picker: "modeBtn", settings: "settingsBtn", saves: "savesBtn", debugPanel: "debugBtn" };
+function openPanel(name) {
+  Object.entries(PANELS).forEach(([p, btn]) => {
+    const open = p === name;
+    $(p).hidden = !open;
+    $(btn).setAttribute("aria-expanded", String(open));
+  });
+  $("modeBtnCaret").textContent = name === "picker" ? "Close" : "Change mode";
+  if (name === "picker") renderPicker();
+  if (name === "saves") { renderSaves(); setStatus(""); }
+  if (name === "debugPanel") { fillDebug(); $("dbgStatus").textContent = ""; }
+}
+const togglePanel = name => openPanel($(name).hidden ? name : null);
+
+function showGain(n) {
+  const el = document.createElement("div");
+  el.className = "gain";
+  el.textContent = "+" + n.toLocaleString();
+  $("scoreBox").appendChild(el);
+  setTimeout(() => el.remove(), 720);
+}
+function setStatus(text, kind) {
+  const s = $("saveStatus");
+  s.textContent = text;
+  s.className = "status" + (kind ? " " + kind : "");
+}
+
+/* ---------- actions ---------- */
+function save() {
+  store.set(KEY_GAME(mode), packGame(games[mode]));
+  store.set(KEY_STATS, stats);
+  store.set(KEY_MODE, mode);
+}
+function stashPrev(id, g) {
+  if (!g || g.moves === 0 || g.arcade) return;
+  prev[id] = g;
+  store.set(KEY_PREV(id), packGame(g));
+}
+
+function startNew(force) {
+  const g = games[mode], btn = $("newGame");
+  const run = M().arcade && g.arcade;
+  const inProgress = run ? ["play", "failed", "clear"].includes(run.phase) && (run.stage > 1 || g.moves > 0) : g.moves > 0 && !g.over;
+  if (inProgress && !force && !confirmTimer) {
+    btn.textContent = "Tap again to restart";
+    btn.classList.add("warn");
+    confirmTimer = setTimeout(clearConfirm, 3000);
+    return;
+  }
+  clearConfirm();
+  if (run) {
+    if (inProgress) { run.runScore += g.score; recordRun(g, "quit"); }
+    games.arcade = newArcadeRun("play");
+    setupBoard(); save(); board.focus();
+    return;
+  }
+  if (inProgress) record(g, g.won ? "won" : "quit");
+  stashPrev(mode, g);
+  games[mode] = newGame(M());
+  setupBoard();
+  save();
+  board.focus();
+}
+function readDims() {
+  const clamp = v => Math.min(8, Math.max(2, Math.round(+v) || 4));
+  return [clamp($("dimW").value), clamp($("dimH").value)];
+}
+function updateDimGoal() {
+  const [w, h] = readDims();
+  $("dimGoal").innerHTML = `Goal for ${w}×${h}: <b>${dynGoal(w, h).toLocaleString()}</b>`;
+}
+function clearConfirm() {
+  clearTimeout(confirmTimer); confirmTimer = null;
+  $("newGame").textContent = "New game";
+  $("newGame").classList.remove("warn");
+}
+function setMode(id) {
+  if (id === mode || !BY_ID[id]) return;
+  clearConfirm();
+  mode = id;
+  if (!games[mode]) games[mode] = makeGame(mode);
+  setupBoard();
+  save();
+}
+function loadGame(id, g, msg) {
+  clearConfirm();
+  const current = games[id];
+  mode = id;
+  stashPrev(id, current);
+  games[id] = g;
+  setupBoard();
+  save();
+  renderSaves();
+  setStatus(msg, "ok");
+}
+
+function hydrate(saved, m) {
+  if (!saved || !Array.isArray(saved.tiles)) return null;
+  if (m.arcade) { if (!saved.arcade || !Array.isArray(saved.arcade.plan)) return null; configureArcade(saved.arcade); }
+  const H = m.dyn ? saved.h || 4 : m.rows, W = m.dyn ? saved.w || 4 : m.cols;
+  if (saved.tiles.some(t => t.r >= H || t.c >= W)) return null;
+  const g = { made: [], bigs: [], ...saved, tiles: saved.tiles.map(t => { const x = { id: nextId++, v: t.v, r: t.r, c: t.c, born: t.b ?? saved.moves ?? 0 }; if (t.k) x.k = t.k; return x; }) };
+  if (!saved.made) checkWin(g, m);
+  return g;
+}
+
+async function copyText(textarea) {
+  try {
+    await navigator.clipboard.writeText(textarea.value);
+    setStatus("Copied the code.", "ok");
+  } catch (e) {
+    textarea.focus(); textarea.select();
+    setStatus("The code is selected. Press Ctrl+C (or ⌘C) to copy it.");
+  }
+}
+
+let downloads = null;
+async function saveTxt(id, g) {
+  if (!downloads) return;
+  const m = BY_ID[id];
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
+  const text = encode(id, g) + "\n";
+  try {
+    await downloads.save({ filename: `2048-${m.id}-${stamp}.txt`, data: text });
+    setStatus("Saved the .txt file.", "ok");
+  } catch (e) {
+    const code = e && e.code;
+    setStatus(code === "declined" ? "Save canceled." : code === "rate_limited" ? "A save is already waiting for you to confirm." : "Saving a file isn't available here. Copy the code instead.", code === "declined" ? "" : "err");
+  }
+}
+
+const DEFAULT_KEYS = { left: "ArrowLeft", up: "ArrowUp", right: "ArrowRight", down: "ArrowDown" };
+const WASD = { a: "left", w: "up", d: "right", s: "down" };
+const DIRS = ["left", "up", "right", "down"];
+let capturing = null;
+const keyLabel = k => ({ ArrowLeft: "←", ArrowUp: "↑", ArrowRight: "→", ArrowDown: "↓", " ": "Space" })[k] || (k.length === 1 ? k.toUpperCase() : k);
+const normKey = k => k.length === 1 ? k.toLowerCase() : k;
+function keyToDir(key) {
+  const k = normKey(key);
+  const bound = DIRS.find(d => normKey(settings.keys[d]) === k);
+  return bound || WASD[k] || null;
+}
+function renderKeys() {
+  $("keyBtns").innerHTML = DIRS.map(d => `<button class="keybtn" id="key-${d}" data-dir="${d}" aria-pressed="${capturing === d}">
+    <span>${d[0].toUpperCase() + d.slice(1)}</span><b>${capturing === d ? "Press a key…" : keyLabel(settings.keys[d])}</b></button>`).join("");
+  $("keyBtns").querySelectorAll(".keybtn").forEach(b => b.addEventListener("click", () => { capturing = capturing === b.dataset.dir ? null : b.dataset.dir; renderKeys(); }));
+  const isDefault = DIRS.every(d => settings.keys[d] === DEFAULT_KEYS[d]);
+  $("hint").textContent = `${isDefault ? "Arrow keys" : DIRS.map(d => keyLabel(settings.keys[d])).join(" ")} or WASD on a keyboard. Swipe on the board on a phone. Each mode keeps its own game, so you can switch and come back.`;
+}
+function fillDebug() {
+  const m = M();
+  $("dbgMode").textContent = m.arcade ? "Arcade" : `${m.name} (${m.label})`;
+  const off = !!m.arcade;
+  ["dbgW", "dbgH", "dbgGoals", "dbgNeed", "dbgRungs", "dbgSpawn", "dbgApply", "dbgReset"].forEach(id => $(id).disabled = off);
+  if (off) { $("dbgStatus").textContent = "Arcade stages can't be changed in debug mode."; return; }
+  $("dbgWH").style.opacity = m.dyn ? 0.5 : 1;
+  $("dbgW").disabled = $("dbgH").disabled = !!m.dyn;
+  $("dbgW").value = m.cols; $("dbgH").value = m.rows;
+  $("dbgGoals").value = m.goals.join(", ");
+  $("dbgNeed").value = m.need === "all" ? "all" : "any";
+  $("dbgRungs").value = (m.ladder || []).join(", ");
+  $("dbgSpawn").value = m.spawn.map(([v, p, k]) => `${v}${typeof k === "string" ? k : ""}: ${+p.toFixed(3)}`).join("\n");
+}
+function readDebug(m) {
+  const nums = str => str.split(/[\s,;]+/).filter(Boolean).map(Number);
+  const goals = nums($("dbgGoals").value), ladder = asc(nums($("dbgRungs").value));
+  if (!goals.length || goals.some(v => !isFinite(v) || v === 0)) throw new Error("Goals need at least one number other than 0, separated by commas.");
+  if (ladder.some(v => !isFinite(v))) throw new Error("Rungs must be numbers separated by commas.");
+  const spawn = [];
+  for (const line of $("dbgSpawn").value.split(/[\n,]+/).map(x => x.trim()).filter(Boolean)) {
+    const mt = line.match(/^(-?\d+(?:\.\d+)?)([a-z]\w*)?\s*[:=]?\s*(\d+(?:\.\d+)?)\s*%?$/i);
+    if (!mt) throw new Error(`Couldn't read "${line}". Write each new tile as value: chance, like 2: 90.`);
+    const v = +mt[1], p = +mt[3], def = DEFAULTS[m.id].spawn.find(e => e[0] === v);
+    if (v === 0 || p <= 0) continue;
+    const k = mt[2] || (def && typeof def[2] === "number" ? def[2] : undefined);
+    spawn.push(k != null ? [v, p, k] : [v, p]);
+  }
+  if (!spawn.length) throw new Error("Add at least one new tile with a chance above 0.");
+  const clamp = v => Math.min(10, Math.max(2, Math.round(+v) || 4));
+  return { ...(m.dyn ? {} : { w: clamp($("dbgW").value), h: clamp($("dbgH").value) }), goals, need: $("dbgNeed").value, ladder, spawn };
+}
+function restartWith(m) {
+  const g = games[mode];
+  if (g && g.moves > 0 && !g.over) record(g, g.won ? "won" : "quit");
+  stashPrev(mode, g);
+  games[mode] = newGame(m);
+  setupBoard();
+  save();
+}
+function start(hot) {
+  hot = hot || {};
+  overrides = store.get(KEY_OVR) || {};
+  MODES.forEach(applyOverride);
+  if (!settings.keys) settings.keys = { ...DEFAULT_KEYS };
+  const savedStats = hot.stats || store.get(KEY_STATS) || {};
+  MODES.forEach(m => {
+    stats[m.id] = Object.assign(blankStats(), savedStats[m.id] || {});
+    const g = hydrate(hot.games ? hot.games[m.id] : store.get(KEY_GAME(m.id)), m);
+    if (g) games[m.id] = g;
+    const p = hydrate(hot.prev ? hot.prev[m.id] : store.get(KEY_PREV(m.id)), m);
+    if (p) prev[m.id] = p;
+  });
+  const savedMode = hot.mode || store.get(KEY_MODE);
+  if (savedMode && BY_ID[savedMode]) mode = savedMode;
+  if (!games[mode]) games[mode] = makeGame(mode);
+  setupBoard();
+
+  // Arcade boss: a new tile every few seconds while a stage is being played.
+  let lastTick = performance.now();
+  setInterval(() => {
+    const now = performance.now(), dt = now - lastTick;
+    lastTick = now;
+    const m = M();
+    if (!m.arcade || !m.speed) return;
+    const g = games.arcade, run = g && g.arcade;
+    if (!run || run.phase !== "play" || document.hidden) return;
+    run.clock = (run.clock || 0) + dt;
+    if (run.clock >= m.speed) {
+      run.clock -= m.speed;
+      spawn(g, m);
+      if (!canMove(g, m)) { arcadeFail(g); sfx.over(); } else sfx.slide();
+      render(); save();
+    }
+    updateArcadeTimer();
+  }, 200);
+
+  $("modeBtn").addEventListener("click", () => togglePanel("picker"));
+  $("settingsBtn").addEventListener("click", () => togglePanel("settings"));
+  $("savesBtn").addEventListener("click", () => togglePanel("saves"));
+  $("newGame").addEventListener("click", () => startNew(false));
+
+  // settings
+  $("soundOn").checked = settings.sound;
+  $("volume").value = settings.volume;
+  $("volume").disabled = !settings.sound;
+  const saveSettings = () => store.set(KEY_SET, settings);
+  $("soundOn").addEventListener("change", e => { settings.sound = e.target.checked; $("volume").disabled = !settings.sound; saveSettings(); if (settings.sound) sfx.merge(8, M()); });
+  $("volume").addEventListener("input", e => { settings.volume = +e.target.value; saveSettings(); });
+  $("volume").addEventListener("change", () => sfx.merge(16, M()));
+  $("soundSet").value = SOUND_SETS[settings.soundSet] ? settings.soundSet : "original";
+  $("debugRow").hidden = !debugMode;
+  $("debugBtn").hidden = !debugMode;
+  $("debugBtn").addEventListener("click", () => togglePanel("debugPanel"));
+  renderKeys();
+  $("keysReset").addEventListener("click", () => { settings.keys = { ...DEFAULT_KEYS }; capturing = null; saveSettings(); renderKeys(); });
+  $("dbgApply").addEventListener("click", () => {
+    const m = M();
+    if (m.arcade) return;
+    try {
+      overrides[m.id] = readDebug(m);
+      store.set(KEY_OVR, overrides);
+      restoreDefaults(m);
+      restartWith(m);
+      fillDebug();
+      $("dbgStatus").className = "status ok";
+      $("dbgStatus").textContent = "Applied. A new game started with these settings.";
+    } catch (e) { $("dbgStatus").className = "status err"; $("dbgStatus").textContent = e.message; }
+  });
+  $("dbgReset").addEventListener("click", () => {
+    const m = M();
+    if (m.arcade) return;
+    delete overrides[m.id];
+    store.set(KEY_OVR, overrides);
+    restoreDefaults(m);
+    restartWith(m);
+    fillDebug();
+    $("dbgStatus").className = "status ok";
+    $("dbgStatus").textContent = "This mode is back to its normal settings. A new game started.";
+  });
+  $("soundSet").addEventListener("change", e => { settings.soundSet = e.target.value; saveSettings(); sfx.merge(16, M()); setTimeout(() => sfx.merge(128, M()), 220); });
+
+  // custom board size (Dynamic goals)
+  ["dimW", "dimH"].forEach(id => $(id).addEventListener("input", updateDimGoal));
+  $("dimApply").addEventListener("click", () => {
+    const m = M();
+    if (!m.dyn) return;
+    const [w, h] = readDims();
+    const g = games[mode];
+    if (g.moves > 0 && !g.over) record(g, g.won ? "won" : "quit");
+    stashPrev(mode, g);
+    setDims(m, w, h);
+    games[mode] = newGame(m);
+    setupBoard();
+    save();
+    board.focus();
+  });
+
+  // save codes
+  $("copyCur").addEventListener("click", () => copyText($("curCode")));
+  $("copyPrev").addEventListener("click", () => copyText($("prevCode")));
+  $("saveCur").addEventListener("click", () => saveTxt(mode, games[mode]));
+  $("savePrev").addEventListener("click", () => prev[mode] && saveTxt(mode, prev[mode]));
+  $("restorePrev").addEventListener("click", () => {
+    const p = prev[mode];
+    if (!p) return;
+    delete prev[mode];
+    loadGame(mode, p, "Restored your previous game. The game you just left is now in the previous slot.");
+  });
+  $("loadBtn").addEventListener("click", () => {
+    try {
+      const { mode: id, game } = decode($("loadCode").value);
+      loadGame(id, game, `Loaded ${describe(id, game)}.`);
+      $("loadCode").value = "";
+    } catch (e) { setStatus(e.message, "err"); }
+  });
+  $("openTxt").addEventListener("click", () => $("fileIn").click());
+  $("fileIn").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const r = new FileReader();
+    r.onload = () => { $("loadCode").value = String(r.result).trim(); $("loadBtn").click(); };
+    r.onerror = () => setStatus("Couldn't read that file.", "err");
+    r.readAsText(f);
+    e.target.value = "";
+  });
+
+  let armed = false;
+  $("resetStats").addEventListener("click", e => {
+    const b = e.currentTarget;
+    if (!armed) { armed = true; b.textContent = "Tap again to clear all scores"; setTimeout(() => { armed = false; b.textContent = "Clear scores"; }, 3000); return; }
+    armed = false; b.textContent = "Clear scores";
+    MODES.forEach(m => stats[m.id] = blankStats());
+    save(); render();
+  });
+
+  document.addEventListener("keydown", e => {
+    if (capturing) {
+      e.preventDefault();
+      if (e.key !== "Escape" && !["Shift", "Control", "Alt", "Meta", "Tab"].includes(e.key)) {
+        DIRS.forEach(d => { if (d !== capturing && normKey(settings.keys[d]) === normKey(e.key)) settings.keys[d] = settings.keys[capturing]; });
+        settings.keys[capturing] = e.key;
+        saveSettings();
+      }
+      capturing = null;
+      renderKeys();
+      return;
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    if (e.key === "Escape") { openPanel(null); return; }
+    const tag = e.target && e.target.tagName;
+    if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+    const d = keyToDir(e.key);
+    if (!d) return;
+    e.preventDefault();
+    move(d);
+  });
+
+  let sx = 0, sy = 0, tracking = false;
+  board.addEventListener("pointerdown", e => { sx = e.clientX; sy = e.clientY; tracking = true; });
+  board.addEventListener("pointerup", e => {
+    if (!tracking) return;
+    tracking = false;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
+  });
+  board.addEventListener("pointercancel", () => { tracking = false; });
+
+  const pack = obj => Object.fromEntries(Object.entries(obj).map(([id, g]) => [id, packGame(g)]));
+  window.claude?.hot?.snapshot?.(() => ({ mode, stats, games: pack(games), prev: pack(prev) }));
+
+  Promise.resolve(window.claude?.use?.("downloads")).then(d => {
+    if (!d) return;
+    downloads = d;
+    $("saveCur").hidden = false;
+    $("savePrev").hidden = false;
+  }).catch(() => {});
+}
+
+// exposed for a quick logic check outside the browser
+if (typeof window.__test2048 === "object") Object.assign(window.__test2048, { MODES, slide, encode, decode, newGame, checkWin, planRun, configureArcade, ARCADE, BY_ID, debugProgress, debugState, isDebug: () => debugMode });
+else window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>
