@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>2048</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -666,6 +666,50 @@ const mergeFibProd = tiles => {
   return null;
 };
 const isFibNum = v => v === 1 || fibs.includes(v);
+const isTri = n => n > 0 && isSquare(8 * n + 1);
+const TETRA = (() => { const a = []; for (let n = 1; n <= 30; n++) a.push(n * (n + 1) * (n + 2) / 6); return a; })();
+const primeFactors = v => { const out = []; let n = Math.abs(v); for (let p = 2; p * p <= n; p++) { if (n % p === 0) { out.push(p); while (n % p === 0) n /= p; } } if (n > 1) out.push(n); return out; };
+const EVEN_SQ = Array.from({ length: 16 }, (_, i) => (2 * (i + 1)) ** 2);
+// SQPRM: count even squares as they're made.
+const afterSqprm = (g, merges) => {
+  g.x = g.x || { evsq: [], count: 0 };
+  merges.forEach(t => { if (t.v % 2 === 0 && isSquare(t.v)) { g.x.count++; if (!g.x.evsq.includes(t.v)) g.x.evsq.push(t.v); } });
+  return {};
+};
+// DIVE: new tiles add their prime factors as seeds; a seed with no multiples left is removed for points.
+const afterDive = (g, merges) => {
+  const x = g.x;
+  merges.forEach(t => primeFactors(t.v).forEach(p => {
+    if (!x.seeds.includes(p)) x.seeds.push(p);
+    if (p >= 11) x.big11 = true;
+  }));
+  x.seeds.sort((a, b) => b - a);
+  for (const sd of x.seeds.slice()) {
+    if (x.seeds.length > 1 && !g.tiles.some(t => t.v % sd === 0)) { x.seeds = x.seeds.filter(q => q !== sd); g.score += sd; }
+  }
+  x.seeds.sort((a, b) => a - b);
+  return {};
+};
+const okI18 = ([a, b]) => {
+  const [lo, hi] = lohi2(a, b);
+  if ((lo === 1 && (hi === 1 || hi === 2)) || (lo === 3 && (hi === 3 || hi === 6))) return true;
+  const special = isPow(hi, 18) || (hi % 3 === 0 && isPow(hi / 3, 18));
+  return special ? lo * 2 === hi : lo === hi;
+};
+const nextTri = t => { const k = Math.round((Math.sqrt(8 * t + 1) - 1) / 2); return t + k + 1; };
+// 378: the goal tile vanishes when made and the goal moves to the next triangular number; overshooting loses.
+const afterTri = (g, merges) => {
+  for (const t of merges) {
+    if (t.v === g.tgoal) {
+      g.tiles = g.tiles.filter(x => x !== t);
+      if (g.tgoal >= 378 && !g.won) g.tWon = true;
+      g.tgoal = nextTri(g.tgoal);
+    } else if (t.v > g.tgoal) {
+      return { lose: `You made ${t.v.toLocaleString()}, which is past the goal tile of ${g.tgoal.toLocaleString()}.` };
+    }
+  }
+  return {};
+};
 // x + m·x for a pair; for triples, multiples of the smallest tile.
 const pairMult = (mults) => ([a, b]) => { const [lo, hi] = lohi2(a, b); return mults.some(k => hi === k * lo); };
 const multiSet = sets => vals => { const s = asc(vals), n = s[0]; return sets.some(t => t.length === s.length && asc(t).every((k, i) => k * n === s[i])); };
@@ -852,6 +896,12 @@ const MODES = [
     examples: [[[1, 1, 1], 3], [[3, 1], 4], [[4, 4, 4], 12], [[12, 4], 16], [[1, 1], 0]] },
   p4Mode("p4-3072", "Slightly higher", 3072, [...powLadder(4, 1, 1024), 3072]),
   p4Mode("p4-4096", "Higher goal", 4096),
+  { ...p4Mode("p4-16384", "Larger board", 16384), size: 6 },
+  { id: "d24-mix", group: "Powers of 4", name: "2s and 4s dual-mix", family: "Powers of 2 and 4", goals: [2048, 4096], need: "any", size: 6,
+    spawn: [[1, 80], [2, 12], [3, 6], [4, 2]], maxK: 3, ok: recipes(4, [[1, 1], [1, 1, 1], [2, 2], [3, 1]]),
+    ladder: asc([...powLadder(4, 1, 4096), ...powLadder(4, 2, 2048)]),
+    rule: "For a power of 4 (n): n + n, n + n + n, 2n + 2n and 3n + n merge. Make a 2048 or a 4096 to win.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[2, 2], 4], [[3, 1], 4], [[1024, 1024], 2048], [[2, 1], 0]] },
   { id: "h5-3125", group: "Other bases", name: "Harder powers of 5", family: "Powers of 5, harder merges", goals: [3125], size: 5,
     spawn: [[1, 90], [3, 10]], maxK: 3, ok: recipes(5, [[1, 1, 1], [3, 1, 1]]),
     ladder: powLadder(5, 1, 3125),
@@ -868,6 +918,12 @@ const MODES = [
     ladder: powLadder(5, 1, 3125),
     rule: "Two tiles merge when both are multiples of the same power of 5 and their sum doesn't go past the next power of 5, except a power of 5 never merges with triple itself.",
     examples: [[[1, 3], 4], [[2, 3], 5], [[1, 1], 2], [[5, 15], 0], [[1, 3], 4], [[10, 15], 25], [[3, 3], 0]] },
+  { id: "b5-78125", group: "Other bases", name: "Powers of 5, larger", family: "Powers of 5", goals: [78125], size: 5,
+    spawn: [[1, 80], [2, 8], [3, 6], [4, 4], [5, 2]], maxK: 2,
+    ok: ([a, b]) => { const k = Math.min(val5(a), val5(b)); return a + b <= 5 ** (k + 1); },
+    ladder: powLadder(5, 1, 78125),
+    rule: "Two tiles merge when both are multiples of the same power of 5 and their sum doesn't go past the next power of 5.",
+    examples: [[[1, 3], 4], [[2, 3], 5], [[5, 15], 20], [[3, 3], 0], [[5, 1], 0]] },
   { id: "b5-3125", group: "Other bases", name: "Powers of 5", family: "Powers of 5", goals: [3125], size: 4,
     spawn: [[1, 80], [2, 8], [3, 6], [4, 4], [5, 2]], maxK: 2,
     ok: ([a, b]) => { const k = Math.min(val5(a), val5(b)); return a + b <= 5 ** (k + 1); },
@@ -923,6 +979,11 @@ const MODES = [
     ladder: powLadder(12, 1, 1728),
     rule: "Two, three or four equal tiles merge when their sum is 1, 2, 3, 4, 6 or 12 times a power of 12. Four tiles that are each 6 times a power of 12 don't merge.",
     examples: [[[1, 1], 2], [[1, 1, 1], 3], [[2, 2, 2], 6], [[3, 3, 3, 3], 12], [[6, 6], 12], [[6, 6, 6, 6], 0], [[2, 2, 2, 2], 0]] },
+  { id: "e12-1728", group: "Other bases", name: "Easier powers of 12", family: "Powers of 12, easier merges", goals: [1728], size: 4,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 2, ok: ([a, b]) => nice12(a + b),
+    ladder: powLadder(12, 1, 1728),
+    rule: "Any two tiles merge when their sum is 1, 2, 3, 4 or 6 (the proper factors of 12) times a power of 12, like 2, 6, 12, 24, 36 or 72.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[2, 4], 6], [[5, 7], 12], [[12, 24], 36], [[2, 3], 0]] },
   { id: "b13-2197", group: "Other bases", name: "Powers of 13", family: "Powers of 13", goals: [2197], size: 4,
     spawn: [[1, 85], [2, 8], [3, 5], [4, 2]], maxK: 2, ok: recipes(13, [[1, 1], [1, 2], [1, 3], [2, 4], [3, 6], [4, 9]]),
     ladder: powLadder(13, 1, 2197),
@@ -946,13 +1007,18 @@ const MODES = [
   { id: "i15-3375", group: "Other bases", name: "Interleaved 15s", family: "Powers of 15, interleaved", goals: [3375], size: 5,
     spawn: [[1, 85], [2, 12], [4, 3]], maxK: 3, ok: okI15,
     ladder: powLadder(15, 1, 3375),
-    rule: "1 + 1 makes 2 and 2 + 2 makes 4. For a power of 15 (n): 4n + n, 5n + 5n + 5n, n + n/3, and 20n + 20n + 20n merge. The path runs 1, 5, 15, 20, 60, 75, 225, and so on.",
+    rule: "1 + 1 makes 2 and 2 + 2 makes 4. For a power of 15 (n): n + 4n, three tiles of 5n, three tiles of 20n, and 5n + 15n merge. The path runs 1, 5, 15, 20, 60, 75, 225, and so on.",
     examples: [[[4, 1], 5], [[5, 5, 5], 15], [[15, 5], 20], [[20, 20, 20], 60], [[60, 15], 75], [[75, 75, 75], 225], [[1, 2], 0]] },
   { id: "b16-4096", group: "Other bases", name: "Powers of 16", family: "Powers of 16", goals: [4096], size: 5,
     spawn: [[1, 85], [3, 8], [4, 5], [8, 2]], maxK: 3, ok: recipes(16, [[1, 1, 1], [3, 1], [4, 4], [8, 4, 4]]),
     ladder: powLadder(16, 1, 4096),
     rule: "For a power of 16 (n): n + n + n, 3n + n, 4n + 4n, and 8n + 4n + 4n (in any order) merge. The path is 1, 3, 4, 8, 16.",
     examples: [[[1, 1, 1], 3], [[3, 1], 4], [[4, 4], 8], [[8, 4, 4], 16], [[48, 16], 64], [[1, 1], 0]] },
+  { id: "i18-5832", group: "Other bases", name: "Interleaved 18s", family: "Powers of 18, interleaved", goals: [5832], size: 4,
+    spawn: [[1, 85], [2, 9], [3, 6]], maxK: 2, ok: okI18,
+    ladder: [1, 3, 9, 18, 54, 162, 324, 972, 2916, 5832],
+    rule: "1 + 1, 2 + 1, 3 + 3 and 6 + 3 merge. After that, a power of 18 or triple a power of 18 merges with a tile half its size, and any other tile merges with an equal tile. The path runs 9, 18, 27, 54, 81, 162, 324, and so on.",
+    examples: [[[1, 1], 2], [[2, 1], 3], [[3, 3], 6], [[6, 3], 9], [[9, 9], 18], [[18, 9], 27], [[27, 27], 54], [[54, 27], 81], [[18, 18], 0]] },
   { id: "b17-4913", group: "Other bases", name: "Powers of 17", family: "Powers of 17", goals: [4913], size: 5,
     spawn: [[1, 90], [3, 7], [5, 3]], maxK: 3, ok: recipes(17, [[1, 1, 1], [3, 1, 1], [5, 5, 1], [1, 5, 11]]),
     ladder: powLadder(17, 1, 4913),
@@ -1132,6 +1198,20 @@ const MODES = [
     ladder: Array.from({ length: 10 }, (_, i) => 3 * 2 ** i), ladderTitle: "Tier centers",
     rule: "Tiles come in tiers of three: 2, 3, 4; then 5, 6, 7; then 11, 12, 13; and so on. Two different tiles of the same tier merge into the next tier. Make 1,535, 1,536 or 1,537 to win.",
     examples: [[[2, 3], 5], [[2, 4], 6], [[3, 4], 7], [[5, 7], 12], [[11, 13], 24], [[3, 3], 0], [[4, 5], 0]] },
+  { id: "tri-378", group: "Sequences", name: "Triangular", family: "Triangular numbers", goals: [378], size: 5,
+    spawn: [[1, 90], [3, 10]], maxK: 3, ok: vals => isTri(sum(vals)), tgoalStart: 6, afterMerge: afterTri,
+    checkWin: g => !!g.tWon,
+    liveHint: g => `Goal tile: ${g.tgoal.toLocaleString()}. Make it to clear it; go past it and you lose.`,
+    isHit: (v, g) => v < g.tgoal,
+    ladderNote: g => g.tgoal > 378 ? "All goals cleared" : `Next goal ${g.tgoal.toLocaleString()}`,
+    ladder: (() => { const a = []; for (let t = 6; t <= 378; t = nextTri(t)) a.push(t); return a; })(), ladderTitle: "Goal tiles",
+    rule: "Two or three tiles merge when they add up to a triangular number (1, 3, 6, 10, 15 …). The goal tile starts at 6. Making it clears that tile and moves the goal to the next triangular number. Making any tile bigger than the goal ends the game. Clear the 378 goal to win.",
+    examples: [[[1, 1, 1], 3], [[3, 3], 6], [[1, 3, 6], 10], [[6, 3, 1], 10], [[1, 1], 0], [[3, 3, 3], 0]] },
+  { id: "tet-1540", group: "Sequences", name: "Tetrahedral", family: "Tetrahedral numbers", goals: [1540], size: 6,
+    spawn: [[1, 95], [4, 5]], maxK: 4, ok: vals => TETRA.includes(sum(vals)),
+    ladder: TETRA.filter(v => v <= 1540),
+    rule: "Two, three or four tiles merge when they add up to a tetrahedral number: 1, 4, 10, 20, 35, 56, 84 and so on.",
+    examples: [[[1, 1, 1, 1], 4], [[4, 4, 1, 1], 10], [[10, 10], 20], [[20, 10, 4, 1], 35], [[1, 1], 0]] },
   { id: "fib-2584", group: "Sequences", name: "Fibonacci", family: "Fibonacci", goals: [2584], size: 4,
     spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2,
     ok: ([a, b]) => { const [lo, hi] = lohi2(a, b); if (lo === 1 && hi === 1) return true; const i = fibs.indexOf(hi); return i > 0 && fibs[i - 1] === lo; },
@@ -1166,6 +1246,12 @@ const MODES = [
     ladder: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
     rule: "Two 1s make 2 and two −1s make −2. After that, two equal tiles merge with a tile of the opposite sign one step closer to zero: 2 + 2 + (−1) → 3, 3 + 3 + (−2) → 4, and −2 + (−2) + 1 → −3. Reach 10 or −10 to win.",
     examples: [[[1, 1], 2], [[-1, -1], -2], [[2, 2, -1], 3], [[-2, -2, 1], -3], [[3, 3, -2], 4], [[9, 9, -8], 10], [[2, 2], 0], [[1, -1], 0]] },
+  { id: "pm-16", group: "Mixed rules", name: "Plus and minus, larger", family: "Positive and negative", goals: [16], size: 6, neg: true, absTop: true,
+    spawn: [[1, 50], [-1, 50]], maxK: 3, merge: mergeTen,
+    tagline: "Slide and merge tiles to reach 16 or −16.",
+    ladder: Array.from({ length: 16 }, (_, i) => i + 1),
+    rule: "Two 1s make 2 and two −1s make −2. After that, two equal tiles merge with a tile of the opposite sign one step closer to zero: 2 + 2 + (−1) → 3, and −2 + (−2) + 1 → −3. Reach 16 or −16 to win.",
+    examples: [[[1, 1], 2], [[-1, -1], -2], [[2, 2, -1], 3], [[-2, -2, 1], -3], [[15, 15, -14], 16], [[2, 2], 0]] },
   { id: "xy", group: "Mixed rules", name: "Perfect powers", family: "Perfect powers", goals: [1024], label: "Xʸ", size: 5,
     count: 12, countIf: v => isPerfPow(v, 3), slotLabel: "cube+",
     tagline: "Make 12 tiles that are cubes or higher powers.", winText: "You made 12 cubes or higher powers",
@@ -1239,6 +1325,30 @@ const MODES = [
     ladder: [1, 2, 3, 6, 12, 36, 72, 216, 432, 1296, 2592],
     rule: "The rule switches every move. On odd moves, three equal tiles merge. On even moves, two equal tiles merge. Every tile is 2ᵃ × 3ᵇ.",
     examples: [[[1, 1, 1], 3], [[3, 3], 6], [[6, 6, 6], 18], [[1296, 1296], 2592], [[2, 3], 0]] },
+  { id: "sqprm", group: "Endless", name: "SQPRM", family: "Primes and squares, endless", goals: [1024], label: "SQPRM", size: 4, endless: true,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, ok: ([a, b]) => { const s = a + b; return isPrime(s) || isSquare(s); },
+    checkWin: () => false, afterMerge: afterSqprm,
+    initX: () => ({ evsq: [], count: 0 }),
+    cleanX: x => ({ evsq: Array.isArray(x && x.evsq) ? x.evsq.filter(v => EVEN_SQ.includes(v) || (v % 2 === 0 && isSquare(v))) : [], count: x && Number.isInteger(x.count) ? x.count : 0 }),
+    tagline: "Endless. Make the biggest tile you can.",
+    ladder: EVEN_SQ, ladderTitle: "Even squares made",
+    isHit: (v, g) => !!(g.x && g.x.evsq.includes(v)),
+    ladderNote: g => { const x = g.x || { evsq: [], count: 0 }; return `${x.evsq.length} different, ${x.count} total`; },
+    rule: "Any two tiles merge when their sum is a prime number or a perfect square. There's no goal tile: keep going as long as you can. For a side challenge, see how many even squares (4, 16, 36 …) you can make; the ladder below tracks them.",
+    examples: [[[1, 1], 2], [[1, 3], 4], [[2, 3], 5], [[7, 9], 16], [[3, 3], 0]] },
+  { id: "dive", group: "Endless", name: "DIVE", family: "Multiples and seeds", goals: [1000], label: "DIVE", size: 4, endless: true,
+    spawn: [[2, 1]], maxK: 2, ok: ([a, b]) => { const [lo, hi] = lohi2(a, b); return hi % lo === 0; },
+    mergeScore: vals => Math.min(...vals), checkWin: () => false, afterMerge: afterDive,
+    initX: () => ({ seeds: [2], big11: false }),
+    cleanX: x => { const seeds = Array.isArray(x && x.seeds) ? x.seeds.filter(v => Number.isInteger(v) && v > 1 && primeFactors(v).length === 1 && primeFactors(v)[0] === v) : []; return { seeds: seeds.length ? seeds : [2], big11: !!(x && x.big11) }; },
+    spawnFn: g => { const sd = (g.x && g.x.seeds.length) ? g.x.seeds : [2]; return [sd[Math.floor(Math.random() * sd.length)], 0]; },
+    spawnText: "New tiles are picked at random from the current seeds, shown in the ladder above.",
+    liveHint: g => `Endless. Seeds: ${(g.x ? g.x.seeds : [2]).join(", ")}.${g.x && g.x.big11 ? " You've made a tile with a prime factor of 11 or more!" : ""}`,
+    ladderFrom: g => (g.x ? g.x.seeds : [2]).slice(), ladderTitle: "Seeds",
+    isHit: () => true,
+    ladderNote: g => g.x && g.x.big11 ? "Prime factor of 11+ made" : "Try for a prime factor of 11 or more",
+    rule: "A tile merges with any of its multiples, so 2 + 6 makes 8 and 3 + 3 makes 6. A merge scores the smaller tile. Only 2s spawn at first. When a new tile has a prime factor that isn't a seed yet, that prime becomes a seed and starts spawning. When no tile on the board is a multiple of a seed any more, the seed is removed and you score its value. There's no goal: make the biggest tile you can, and try to make one with a prime factor of 11 or more.",
+    examples: [[[2, 2], 4], [[2, 4], 6], [[3, 6], 9], [[3, 12], 15], [[5, 15], 20], [[2, 3], 0], [[4, 6], 0]] },
   { id: "xn", group: "Powers of n", name: "Powers of n", family: "Powers of n", goals: [1000], count: 4, label: "XXXX", size: 6,
     spawn: [[1, 100]], maxK: 6, kinds: [2, 3, 4, 5, 6], hsl: true,
     merge: tiles => {
@@ -1528,6 +1638,8 @@ function spawn(g, m) {
 function newGame(m) {
   const g = { tiles: [], score: 0, moves: 0, won: false, keepGoing: false, over: false, made: [], bigs: [] };
   if (m.dyn) { g.w = m.cols; g.h = m.rows; }
+  if (m.tgoalStart) g.tgoal = m.tgoalStart;
+  if (m.initX) g.x = m.initX();
   spawn(g, m); spawn(g, m);
   return g;
 }
@@ -1592,7 +1704,7 @@ function slide(g, m, dir, turn = g.moves + 1) {
         if (res.k) t.k = res.k;
         tiles.push(t);
         merges.push(t);
-        gained += Math.abs(res.v); moved = true; i += used;
+        gained += m.mergeScore ? m.mergeScore(row.slice(i, i + used).map(q => q.v)) : Math.abs(res.v); moved = true; i += used;
       } else {
         const a = row[i];
         if (a.r !== r || a.c !== c) moved = true;
@@ -1613,6 +1725,7 @@ function canMove(g, m) {
   return ok;
 }
 function checkWin(g, m, merges = []) {
+  if (m.checkWin) return m.checkWin(g);
   if (m.count) {
     merges.forEach(t => { if (m.countIf ? m.countIf(t.v) : t.v >= m.top) g.bigs.push({ v: t.v, k: t.k }); });
     return g.bigs.length >= m.count;
@@ -1637,6 +1750,8 @@ function move(dir) {
   g.tiles = res.tiles;
   g.score += Math.round(res.gained);
   g.moves++;
+  const after = m.afterMerge ? m.afterMerge(g, res.merges) : {};
+  if (after.lose) g.loseText = after.lose;
   spawn(g, m);
 
   const s = stats[mode], top = topT(g);
@@ -1652,7 +1767,7 @@ function move(dir) {
   const justWon = !g.won && winning;
   if (justWon) g.won = true;
   if (m.arcade) { if (justWon) arcadeClear(g); else if (!canMove(g, m)) arcadeFail(g); }
-  else if (!canMove(g, m)) { g.over = true; record(g, g.won ? "won" : "over"); }
+  else if (g.loseText || !canMove(g, m)) { g.over = true; record(g, g.won ? "won" : "over"); }
 
   if (justWon) sfx.win();
   else if (g.over) sfx.over();
@@ -1740,12 +1855,14 @@ function record(g, result) {
 
 /* ---------- save codes ---------- */
 const packTile = t => ({ v: t.v, r: t.r, c: t.c, ...(t.k ? { k: t.k } : {}), ...(t.born != null ? { b: t.born } : {}) });
-const packGame = g => ({ tiles: g.tiles.map(packTile), score: g.score, moves: g.moves, won: g.won, keepGoing: g.keepGoing, over: g.over, made: g.made || [], bigs: g.bigs || [], ...(g.bag ? { bag: g.bag.slice() } : {}), ...(g.w ? { w: g.w, h: g.h } : {}), ...(g.arcade ? { arcade: g.arcade } : {}) });
+const packGame = g => ({ tiles: g.tiles.map(packTile), score: g.score, moves: g.moves, won: g.won, keepGoing: g.keepGoing, over: g.over, made: g.made || [], bigs: g.bigs || [], ...(g.bag ? { bag: g.bag.slice() } : {}), ...(g.w ? { w: g.w, h: g.h } : {}), ...(g.arcade ? { arcade: g.arcade } : {}), ...(g.tgoal ? { tgoal: g.tgoal } : {}), ...(g.tWon ? { tWon: true } : {}), ...(g.loseText ? { loseText: g.loseText } : {}), ...(g.x ? { x: JSON.parse(JSON.stringify(g.x)) } : {}) });
 function encode(id, g) {
   const p = packGame(g);
   const data = { v: 2, m: id, t: p.tiles.map(t => t.k ? [t.r, t.c, t.v, t.k] : [t.r, t.c, t.v]), s: p.score, n: p.moves, w: +p.won, k: +p.keepGoing, o: +p.over, d: p.made };
   if (p.bigs.length) data.b = p.bigs.map(b => [b.v, b.k]);
   if (p.bag) data.q = p.bag;
+  if (p.tgoal) { data.tg = p.tgoal; if (p.tWon) data.tw = 1; }
+  if (p.x) data.xx = p.x;
   if (p.w) { data.x = p.w; data.y = p.h; }
   return btoa(JSON.stringify(data));
 }
@@ -1777,6 +1894,8 @@ function decode(code) {
   const bigs = Array.isArray(data.b) ? data.b.filter(b => Array.isArray(b) && Number.isInteger(b[0])).map(([v, k]) => ({ v, k })) : [];
   return { mode: m.id, game: { tiles, score: num(data.s), moves: num(data.n), won: !!data.w, keepGoing: !!data.k, over: !!data.o,
     made: Array.isArray(data.d) ? data.d.filter(x => m.goals.includes(x)) : [], bigs,
+    ...(m.initX ? { x: m.cleanX(data.xx) } : {}),
+    ...(m.tgoalStart ? { tgoal: Number.isInteger(data.tg) && isTri(data.tg) ? data.tg : m.tgoalStart, tWon: !!data.tw } : {}),
     ...(Array.isArray(data.q) ? { bag: data.q.filter(x => Number.isInteger(x) && x > 0) } : {}), ...(m.dyn ? { w: W, h: H } : {}) } };
 }
 const describe = (id, g) => `${BY_ID[id].label} ${BY_ID[id].name} · ${g.score.toLocaleString()} pts · top ${fmtV(topTile(g, BY_ID[id]))} · ${g.moves} moves`;
@@ -1840,6 +1959,7 @@ function render(dying = [], instant = false) {
   $("best").textContent = stats[mode].best.toLocaleString();
   renderArcadeHud(g, m);
   if (m.turnHint) $("tagline").textContent = m.turnHint(g.moves + 1);
+  if (m.liveHint) $("tagline").textContent = m.liveHint(g);
   renderOverlay();
   renderLadder();
   renderStats();
@@ -1968,7 +2088,7 @@ function renderOverlay() {
     $("ovKeep").onclick = () => { g.keepGoing = true; save(); renderOverlay(); board.focus(); };
     $("ovNew").onclick = () => startNew(true);
   } else if (g.over) {
-    overlay.innerHTML = `<h2>${g.won ? "Board full. Goal reached." : "No moves left"}</h2>
+    overlay.innerHTML = `<h2>${g.loseText ? "Past the goal" : g.won ? "Board full. Goal reached." : "No moves left"}</h2>${g.loseText ? `<p>${g.loseText}</p>` : ""}
       <p>${g.score.toLocaleString()} points · top tile ${topTile(g).toLocaleString()} · ${g.moves} moves</p>
       <div class="row"><button class="btn" id="ovNew">Play again</button></div>`;
     overlay.hidden = false;
@@ -1993,9 +2113,9 @@ function renderLadder() {
     return;
   }
   const onBoard = new Set(g.tiles.filter(t => t.k !== "g").map(t => t.v));
-  const rungs = m.ladder.slice();
-  if (top > m.top && !rungs.includes(top)) rungs.push(top);
-  const isHit = v => m.goals.length > 1 ? (onBoard.has(v) || g.made.includes(v) || top > v && !m.goals.includes(v)) : v <= top;
+  const rungs = m.ladderFrom ? m.ladderFrom(g) : m.ladder.slice();
+  if (top > m.top && !rungs.includes(top) && !m.endless) rungs.push(top);
+  const isHit = m.isHit ? v => m.isHit(v, g) : v => m.goals.length > 1 ? (onBoard.has(v) || g.made.includes(v) || top > v && !m.goals.includes(v)) : v <= top;
   $("rungs").innerHTML = rungs.map(v => {
     const cls = ["rung"];
     if (isHit(v)) cls.push("hit");
@@ -2003,7 +2123,8 @@ function renderLadder() {
     return `<span class="${cls.join(" ")}" style="${tileStyle(v, m)}">${v.toLocaleString()}</span>`;
   }).join("");
   let note;
-  if (m.goals.length > 1) {
+  if (m.ladderNote) note = m.ladderNote(g);
+  else if (m.goals.length > 1) {
     note = m.goals.map(x => `${x.toLocaleString()} ${g.made.includes(x) ? (m.together ? "on board" : "made") : "not yet"}`).join(" · ");
   } else {
     const left = m.ladder.filter(v => v > top).length;
