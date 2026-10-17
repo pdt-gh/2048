@@ -156,6 +156,11 @@ textarea.code { width: 100%; min-height: 68px; resize: vertical; font-family: va
 .stages span.now { border: 2px solid var(--fg); color: var(--fg); }
 .stages span.boss { padding-inline: 8px; }
 .arcade-note { font-size: 13px; color: var(--muted); }
+.tp-bar { height: 8px; border-radius: 99px; background: var(--line); overflow: hidden; }
+.tp-bar i { display: block; height: 100%; background: var(--accent); }
+.diffs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; width: min(100%, 380px); margin-inline: auto; }
+.diffs button { display: grid; gap: 2px; text-align: left; }
+.diffs button span { font-size: 12px; font-weight: 400; opacity: 0.85; }
 .arcade-timer { font-size: 13px; font-weight: 600; color: var(--danger); font-variant-numeric: tabular-nums; }
 .bars { position: absolute; left: 11%; right: 11%; bottom: 9%; height: 9%; display: flex; gap: 4%; }
 .bars i { flex: 1; border-radius: 2px; background: rgba(0, 0, 0, 0.16); box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12); }
@@ -872,6 +877,8 @@ const factOk = vals => {
 const MODES = [
   { id: "arcade", group: "Arcade", name: "Arcade", arcade: true, family: "Arcade", goals: [128], size: 4,
     spawn: P2_SPAWN, maxK: 2, ok: p2, ladder: powLadder(2, 2, 128), rule: p2Rule, examples: p2Ex(128) },
+  { id: "arcade2", group: "Arcade", name: "Arcade 2", arcade2: true, family: "Arcade 2", goals: [128], size: 4,
+    spawn: P2_SPAWN, maxK: 2, ok: p2, ladder: powLadder(2, 2, 128), rule: p2Rule, examples: p2Ex(128) },
   p2Mode("3x3-64", "Small, easier", 64, 3),
   p2Mode("3x3-128", "Small board", 128, 3),
   p2Mode("3x3-256", "Small, harder", 256, 3),
@@ -1314,9 +1321,9 @@ const MODES = [
     spawn: [[1, 85, "0,0,0"], [2, 10, "1,1,0"], [3, 5, "1,2,1"]], maxK: 2, merge: mergeFibN,
     kindOk: k => /^\d+,\d+,\d+$/.test(k),
     text: v => fmtV(v),
-    sub: (v, k) => { const [N, prev, c] = fibParse(k); return c < N ? `+${prev}` : `+${v}`; },
+    sub: (v, k) => { const [N, , c] = fibParse(k); return `${c}/${N}`; },
     ladder: [1, 2, 6, 30, 240, 3120], ladderTitle: "Fibonorials",
-    rule: "Each tile has a level N, starting at 0 for a 1. A tile merges with the tile before it in its own run (2 + 1, 9 + 6, 15 + 9, like Fibonacci) up to N times in a row, then it must merge with an equal tile, which raises N by 1. The goals along the way are products of Fibonacci numbers: 2, 6, 30, 240 and 3120. Each tile shows what it can merge with next.",
+    rule: "Each tile has a level N, starting at 0 for a 1. A tile merges with the tile before it in its own run (2 + 1, 9 + 6, 15 + 9, like Fibonacci) up to N times in a row, then it must merge with an equal tile, which raises N by 1. While that count is below N, the only merge allowed is with the tile before it. The goals along the way are products of Fibonacci numbers: 2, 6, 30, 240 and 3120. Each tile shows its count as count/N, so 1/2 means one step taken out of two.",
     examples: [[[[1, "0,0,0"], [1, "0,0,0"]], [2, "1,1,0"]], [[[2, "1,1,0"], 1], [3, "1,2,1"]], [[[3, "1,2,1"], 3], [6, "2,3,0"]], [[[6, "2,3,0"], 3], [9, "2,6,1"]], [[[9, "2,6,1"], 6], [15, "2,9,2"]], [[[15, "2,9,2"], 15], [30, "3,15,0"]], [[[15, "2,9,2"], 9], 0]] },
   { id: "fib-2584", group: "Sequences", name: "Fibonacci", family: "Fibonacci", goals: [2584], size: 4,
     spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2,
@@ -1513,7 +1520,7 @@ const BY_ID = Object.fromEntries(MODES.map(m => [m.id, m]));
    reconfigured from the stage's base mode each time a stage starts. */
 const ARCADE = BY_ID.arcade;
 const BOSS = 13, BLANK_AFTER = 6, BOSS_SPEED = 10000;
-const ARCADE_KEEP = new Set(["id", "group", "name", "arcade"]);
+const ARCADE_KEEP = new Set(["id", "group", "name", "arcade", "arcade2"]);
 const ARCADE_SKIP = new Set(["id", "group", "name", "label", "labelHtml", "goals", "top", "need", "count", "countIf", "together", "dyn",
   "tagline", "winText", "ladderTitle", "slotLabel", "boardBg", "cellBg", "rows", "cols"]);
 const ARCADE_POOLS = [
@@ -1534,21 +1541,75 @@ function planRun() {
   }
   return plan;
 }
+// Copy a base mode's rules onto an arcade mode object, with a stage target and extras.
+function configureFrom(obj, baseId, target, extra) {
+  const base = BY_ID[baseId];
+  Object.keys(obj).forEach(k => { if (!ARCADE_KEEP.has(k)) delete obj[k]; });
+  Object.keys(base).forEach(k => { if (!ARCADE_SKIP.has(k)) obj[k] = base[k]; });
+  Object.assign(obj, {
+    baseId, goals: [target], top: target, need: "any", rows: base.rows, cols: base.cols,
+    label: target.toLocaleString(), labelHtml: target.toLocaleString(),
+    ladder: [...(base.ladder || []).filter(v => v < target), target], ladderTitle: "Stage goal",
+    tagline: `Make a ${target.toLocaleString()} or more with ${base.name} rules.`
+  }, extra || {});
+}
 function configureArcade(run) {
   const st = run.stage, boss = st === BOSS;
   const [baseId, target] = boss ? ["b30-900", 900] : run.plan[st - 1];
-  const base = BY_ID[baseId];
-  Object.keys(ARCADE).forEach(k => { if (!ARCADE_KEEP.has(k)) delete ARCADE[k]; });
-  Object.keys(base).forEach(k => { if (!ARCADE_SKIP.has(k)) ARCADE[k] = base[k]; });
-  Object.assign(ARCADE, {
-    baseId, goals: [target], top: target, need: "any", rows: base.rows, cols: base.cols,
-    label: target.toLocaleString(), labelHtml: target.toLocaleString(),
-    family: boss ? "Boss · Blank and Speed 900" : `Stage ${st} · ${base.name}`,
-    ladder: [...(base.ladder || []).filter(v => v < target), target], ladderTitle: "Stage goal",
-    tagline: boss ? "Make a 900. Tiles go blank after 6 moves, and a new tile drops every 10 seconds."
-      : `Make a ${target.toLocaleString()} or more with ${base.name} rules.`
+  configureFrom(ARCADE, baseId, target, {
+    family: boss ? "Boss · Blank and Speed 900" : `Stage ${st} · ${BY_ID[baseId].name}`,
+    ...(boss ? { tagline: "Make a 900. Tiles go blank after 6 moves, and a new tile drops every 10 seconds.",
+      rows: 10, cols: 10, size: 10, blankAfter: BLANK_AFTER, speed: BOSS_SPEED } : {})
   });
-  if (boss) Object.assign(ARCADE, { rows: 10, cols: 10, size: 10, blankAfter: BLANK_AFTER, speed: BOSS_SPEED });
+}
+
+/* ---------- Arcade 2 ----------
+   Time points (TP) for clearing stages fast; more TP means harder stage goals. Losing a stage keeps you on it
+   but cuts your TP by 20%. Reaching 12,000 TP unlocks the difficulty's fixed four-stage finale. */
+const ARCADE2 = BY_ID.arcade2;
+const ARC2_THRESH = 12000;
+const ARC2_DIFFS = {
+  easy:   { name: "Easy",     off: -1, cap: 2, mult: 1.6,  blurb: "Gentle goals, generous par times" },
+  normal: { name: "Normal",   off: 0,  cap: 3, mult: 1.3,  blurb: "Goals climb with your time points" },
+  hard:   { name: "Hard",     off: 1,  cap: 3, mult: 1.1,  blurb: "Starts a tier up, tighter par" },
+  max:    { name: "Max Hard", off: 2,  cap: 3, mult: 0.95, blurb: "Top-tier goals from the start" }
+};
+const ARC2_FINALES = {
+  easy:   [["2048", 512], ["b3-2187", 243], ["fib-2584", 377], ["2048", 1024]],
+  normal: [["b3-2187", 729], ["fib-2584", 987], ["ps-576", 400], ["2048", 2048, { speed: 10000, twist: "A new tile drops every 10 seconds." }]],
+  hard:   [["trib-1705", 504], ["b5-3125", 625], ["bc-2187", 729], ["5x5-65536", 4096, { blankAfter: 8, twist: "Tiles go blank after 8 moves." }]],
+  max:    [["b7-2401", 2401], ["pell-2378", 985], ["prim-2310", 2310],
+           ["b30-900", 900, { rows: 10, cols: 10, size: 10, blankAfter: 6, speed: 8000, twist: "10×10 board. Tiles go blank after 6 moves, and a new tile drops every 8 seconds." }]]
+};
+const arc2Def = run => run.finale ? ARC2_FINALES[run.diff][run.finale - 1] : run.current;
+const arc2Par = run => { const [, target] = arc2Def(run); return Math.round(15 * Math.log2(Math.max(target, 4)) * ARC2_DIFFS[run.diff].mult * (run.finale ? 1.3 : 1)); };
+const fmtTime = sec => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
+function pickStage2(run) {
+  const d = ARC2_DIFFS[run.diff];
+  const tier = Math.min(d.cap, Math.max(0, Math.floor(run.tp / 3000) + d.off));
+  const recent = run.recent || [];
+  let opts = ARCADE_POOLS[tier].filter(([id]) => !recent.includes(id));
+  if (!opts.length) opts = ARCADE_POOLS[tier];
+  const pick = opts[Math.floor(Math.random() * opts.length)];
+  run.recent = [...recent, pick[0]].slice(-2);
+  return pick;
+}
+function configureArcade2(run) {
+  const [baseId, target, extra] = arc2Def(run);
+  const name = BY_ID[baseId].name;
+  const head = run.finale ? `Finale ${run.finale} of 4` : `Stage ${run.stage}`;
+  configureFrom(ARCADE2, baseId, target, {
+    ...(extra || {}),
+    family: `${head} · ${name}`,
+    tagline: `${head}: make a ${target.toLocaleString()} or more with ${name} rules.${extra && extra.twist ? " " + extra.twist : ""} Par ${fmtTime(arc2Par(run))}.`
+  });
+}
+function newArcade2Run() {
+  const run = { diff: "normal", stage: 1, tp: 0, finale: 0, phase: "choose", elapsed: 0, clock: 0, lastPts: 0, fails: 0, current: ["2048", 128] };
+  configureArcade2(run);
+  const g = newGame(ARCADE2);
+  g.arcade2 = run;
+  return g;
 }
 /* ---------- Debug overrides: board size, goals, rungs and spawns per mode ---------- */
 const DEFAULTS = {};
@@ -1558,7 +1619,7 @@ let overrides = {};
 function restoreDefaults(m) { const d = DEFAULTS[m.id]; if (d) Object.assign(m, d, { goals: d.goals.slice(), ladder: d.ladder.slice() }); }
 function applyOverride(m) {
   const o = overrides[m.id];
-  if (!o || m.arcade) return;
+  if (!o || m.arcade || m.arcade2) return;
   if (o.w && !m.dyn) { m.cols = o.w; m.rows = o.h; m.size = Math.max(o.w, o.h); }
   if (o.goals && o.goals.length) {
     m.goals = o.goals.slice();
@@ -1785,7 +1846,7 @@ function newArcadeRun(phase) {
   g.arcade = run;
   return g;
 }
-const makeGame = id => id === "arcade" ? newArcadeRun("intro") : newGame(BY_ID[id]);
+const makeGame = id => id === "arcade" ? newArcadeRun("intro") : id === "arcade2" ? newArcade2Run() : newGame(BY_ID[id]);
 const mag = (v, m) => m && m.absTop ? Math.abs(v) : v;
 const isOp = t => t.k === "g" || t.k === "d";
 const topT = (g, m = M()) => g.tiles.reduce((x, t) => !isOp(t) && (!x || mag(t.v, m) > mag(x.v, m)) ? t : x, null);
@@ -1884,6 +1945,7 @@ function checkWin(g, m, merges = []) {
 function move(dir) {
   const m = M(), g = games[mode];
   if (m.arcade && (!g.arcade || g.arcade.phase !== "play")) return;
+  if (m.arcade2 && (!g.arcade2 || g.arcade2.phase !== "play")) return;
   if (g.over || (g.won && !g.keepGoing)) return;
   const res = slide(g, m, dir);
   if (!res.moved) return;
@@ -1896,7 +1958,7 @@ function move(dir) {
   spawn(g, m);
 
   const s = stats[mode], top = topT(g);
-  const total = m.arcade ? g.arcade.runScore + g.score : g.score;
+  const total = m.arcade ? g.arcade.runScore + g.score : m.arcade2 ? g.arcade2.tp : g.score;
   if (total > s.best) s.best = total;
   if (top && top.v > s.bestTile) { s.bestTile = top.v; s.bestTileK = top.k || null; }
   debugProgress(mode, res.merges, g);
@@ -1908,6 +1970,7 @@ function move(dir) {
   const justWon = !g.won && winning;
   if (justWon) g.won = true;
   if (m.arcade) { if (justWon) arcadeClear(g); else if (!canMove(g, m)) arcadeFail(g); }
+  else if (m.arcade2) { if (justWon) arcade2Clear(g); else if (!canMove(g, m)) arcade2Fail(g); }
   else if (g.loseText || !canMove(g, m)) { g.over = true; record(g, g.won ? "won" : "over"); }
 
   if (justWon) sfx.win();
@@ -1951,6 +2014,47 @@ function debugProgress(id, merges, g) {
     $("debugBtn").hidden = false;
     console.log("debugMode = true");
   }
+}
+function arcade2Clear(g) {
+  const run = g.arcade2, par = arc2Par(run);
+  const pts = Math.max(100, Math.min(2000, Math.round(1000 * par / Math.max(run.elapsed / 1000, 1))));
+  run.tp += pts; run.lastPts = pts;
+  const s = stats.arcade2;
+  if (run.tp > s.best) s.best = run.tp;
+  if (run.finale === 4) { run.phase = "done"; recordRun2(g, "won"); }
+  else run.phase = "clear";
+}
+function arcade2Fail(g) {
+  const run = g.arcade2;
+  g.over = true;
+  run.lost = run.tp - Math.round(run.tp * 0.8);
+  run.tp = Math.round(run.tp * 0.8);
+  run.fails++;
+  run.phase = "failed";
+}
+function recordRun2(g, result) {
+  const run = g.arcade2, s = stats.arcade2, top = topT(g, ARCADE2);
+  s.played++;
+  if (result === "won") s.wins++;
+  if (run.tp > s.best) s.best = run.tp;
+  const where = run.finale ? `finale ${run.finale}` : `stage ${run.stage}`;
+  s.history.unshift({ score: run.tp, tile: top ? top.v : 0, tk: top && top.k || null, moves: g.moves, at: Date.now(), result,
+    note: `${ARC2_DIFFS[run.diff].name} · ${result === "won" ? "cleared" : "quit at " + where}` });
+  s.history = s.history.slice(0, 10);
+}
+function startArcade2Stage(run) {
+  run.phase = "play"; run.elapsed = 0; run.clock = 0;
+  configureArcade2(run);
+  const g = newGame(ARCADE2);
+  g.arcade2 = run;
+  games.arcade2 = g;
+  setupBoard(); save(); board.focus();
+}
+function nextArcade2Stage(run) {
+  if (run.finale) run.finale++;
+  else if (run.tp >= ARC2_THRESH) run.finale = 1;
+  else { run.stage++; run.current = pickStage2(run); }
+  startArcade2Stage(run);
 }
 function arcadeClear(g) {
   const run = g.arcade;
@@ -1996,7 +2100,7 @@ function record(g, result) {
 
 /* ---------- save codes ---------- */
 const packTile = t => ({ v: t.v, r: t.r, c: t.c, ...(t.k ? { k: t.k } : {}), ...(t.born != null ? { b: t.born } : {}) });
-const packGame = g => ({ tiles: g.tiles.map(packTile), score: g.score, moves: g.moves, won: g.won, keepGoing: g.keepGoing, over: g.over, made: g.made || [], bigs: g.bigs || [], ...(g.bag ? { bag: g.bag.slice() } : {}), ...(g.w ? { w: g.w, h: g.h } : {}), ...(g.arcade ? { arcade: g.arcade } : {}), ...(g.tgoal ? { tgoal: g.tgoal } : {}), ...(g.tWon ? { tWon: true } : {}), ...(g.loseText ? { loseText: g.loseText } : {}), ...(g.x ? { x: JSON.parse(JSON.stringify(g.x)) } : {}), ...(g.mergeCount ? { mergeCount: g.mergeCount } : {}) });
+const packGame = g => ({ tiles: g.tiles.map(packTile), score: g.score, moves: g.moves, won: g.won, keepGoing: g.keepGoing, over: g.over, made: g.made || [], bigs: g.bigs || [], ...(g.bag ? { bag: g.bag.slice() } : {}), ...(g.w ? { w: g.w, h: g.h } : {}), ...(g.arcade ? { arcade: g.arcade } : {}), ...(g.arcade2 ? { arcade2: g.arcade2 } : {}), ...(g.tgoal ? { tgoal: g.tgoal } : {}), ...(g.tWon ? { tWon: true } : {}), ...(g.loseText ? { loseText: g.loseText } : {}), ...(g.x ? { x: JSON.parse(JSON.stringify(g.x)) } : {}), ...(g.mergeCount ? { mergeCount: g.mergeCount } : {}) });
 function encode(id, g) {
   const p = packGame(g);
   const data = { v: 2, m: id, t: p.tiles.map(t => t.k ? [t.r, t.c, t.v, t.k] : [t.r, t.c, t.v]), s: p.score, n: p.moves, w: +p.won, k: +p.keepGoing, o: +p.over, d: p.made };
@@ -2015,7 +2119,7 @@ function decode(code) {
   try { data = JSON.parse(atob(clean)); } catch (e) { throw new Error("That isn't a save code from this game. Check that you copied all of it."); }
   const m = BY_ID[data && data.m];
   if (!m) throw new Error("That code is for a mode this page doesn't have.");
-  if (m.arcade) throw new Error("Arcade runs can't be loaded from a code.");
+  if (m.arcade || m.arcade2) throw new Error("Arcade runs can't be loaded from a code.");
   if (!Array.isArray(data.t)) throw new Error("That code has no board in it.");
   const kinds = m.kinds || [];
   const dim = q => Number.isInteger(q) && q >= 2 && q <= 8 ? q : 4;
@@ -2098,7 +2202,7 @@ function render(dying = [], instant = false) {
   });
   for (const [id, el] of els) if (!live.has(id)) { el.remove(); els.delete(id); }
 
-  $("score").textContent = (m.arcade && g.arcade ? g.arcade.runScore + g.score : g.score).toLocaleString();
+  $("score").textContent = (m.arcade && g.arcade ? g.arcade.runScore + g.score : m.arcade2 && g.arcade2 ? g.arcade2.tp : g.score).toLocaleString();
   $("best").textContent = stats[mode].best.toLocaleString();
   renderArcadeHud(g, m);
   if (m.turnHint) $("tagline").textContent = m.turnHint(g.moves + 1, g);
@@ -2120,6 +2224,7 @@ const dynGoal = (w, h) => 2 ** Math.max(3, Math.round(7 + (w * h - 9) * 4 / 7));
 function setupBoard() {
   const m = M(), g = games[mode];
   if (m.arcade && g.arcade) configureArcade(g.arcade);
+  if (m.arcade2 && g.arcade2) configureArcade2(g.arcade2);
   if (m.dyn) setDims(m, g.w || 4, g.h || 4);
   applyOverride(m);
   const big = Math.max(m.rows, m.cols);
@@ -2159,7 +2264,7 @@ function renderModeInfo() {
     : m.need === "all" ? `Slide and merge tiles. Make both a ${gl[0]} and a ${gl[1]}.`
     : m.goals.length > 1 ? `Slide and merge tiles. Make ${gl.slice(0, -1).map(x => "a " + x).join(", ")} or a ${gl[gl.length - 1]}.`
     : `Slide and merge tiles to reach ${m.label}.`;
-  $("modeBtnGoal").textContent = m.arcade ? "Arcade" : m.label;
+  $("modeBtnGoal").textContent = m.arcade ? "Arcade" : m.arcade2 ? "Arcade 2" : m.label;
   $("modeBtnName").textContent = `${m.name} · ${dimsOf(m)}`;
   $("ruleText").textContent = m.rule;
   $("examples").innerHTML = m.examples.map(([ins, out]) => {
@@ -2178,11 +2283,12 @@ function renderModeInfo() {
   const wsum = m.spawn.reduce((a, e) => a + e[1], 0) || 1;
   $("spawnText").textContent = m.spawnText || "New tiles: " + m.spawn.map(([v, p, k, lbl]) => `${kindName(k)}${fmtV(v)} (${lbl || pct(p * 100 / wsum)})`).join(", ");
   $("ladderTitle").textContent = m.ladderTitle || "Goal ladder";
-  $("histTitle").textContent = m.arcade ? "Arcade runs" : `${m.name} · ${m.label}`;
+  $("histTitle").textContent = m.arcade ? "Arcade runs" : m.arcade2 ? "Arcade 2 runs" : `${m.name} · ${m.label}`;
 }
 
 function renderArcadeHud(g, m) {
   const el = $("arcadeHud");
+  if (m.arcade2 && g.arcade2) { renderArcade2Hud(g); return; }
   if (!m.arcade || !g.arcade) { el.hidden = true; return; }
   const run = g.arcade;
   el.hidden = false;
@@ -2197,6 +2303,54 @@ function renderArcadeHud(g, m) {
     <div class="stages">${strip}</div>
     ${run.extraGiven ? '<div class="arcade-note">New best run score: you earned an extra life.</div>' : ""}`;
   updateArcadeTimer();
+}
+function renderArcade2Hud(g) {
+  const run = g.arcade2, el = $("arcadeHud");
+  if (run.phase === "choose") { el.hidden = true; return; }
+  el.hidden = false;
+  const pct = run.finale ? 100 : Math.min(100, Math.round(run.tp * 100 / ARC2_THRESH));
+  const fin = Array.from({ length: 4 }, (_, i) => `<span class="${i + 1 < run.finale || (i + 1 === run.finale && run.phase !== "play" && run.phase !== "failed") ? "done" : i + 1 === run.finale ? "now" : ""}">F${i + 1}</span>`).join("");
+  el.innerHTML = `<div class="arcade-top"><b>${run.finale ? `Finale ${run.finale} of 4` : `Stage ${run.stage}`}</b>
+    <span class="arcade-note">${ARC2_DIFFS[run.diff].name}</span><span class="arcade-timer" id="arc2Timer"></span></div>
+    <div class="tp-bar" role="img" aria-label="${pct}% of the way to the finale"><i style="width:${pct}%"></i></div>
+    <div class="arcade-note">${run.tp.toLocaleString()} time points${run.finale ? "" : ` · ${Math.max(0, ARC2_THRESH - run.tp).toLocaleString()} more to reach the finale`}${run.lastPts ? ` · last stage +${run.lastPts.toLocaleString()}` : ""}</div>
+    <div class="stages">${fin}</div>`;
+  updateArcade2Timer();
+}
+function updateArcade2Timer() {
+  const el = $("arc2Timer"), run = games.arcade2 && games.arcade2.arcade2;
+  if (!el || !run) return;
+  const sec = (run.elapsed || 0) / 1000, par = arc2Par(run);
+  let txt = `${fmtTime(sec)} · par ${fmtTime(par)}`;
+  if (ARCADE2.speed && run.phase === "play") txt += ` · new tile in ${Math.max(0, Math.ceil((ARCADE2.speed - (run.clock || 0)) / 1000))}s`;
+  el.textContent = txt;
+}
+function renderArcade2Overlay(g) {
+  const run = g.arcade2;
+  const btn = (id, text, fn) => { const b = $(id); if (b) b.onclick = fn; return text; };
+  if (run.phase === "choose") {
+    overlay.innerHTML = `<h2>Arcade 2</h2><p>Clear stages fast to earn time points. More points bring harder goals, and 12,000 points unlock a four-stage finale. Losing a stage keeps you on it but costs 20% of your points. Pick a difficulty:</p>
+      <div class="diffs">${Object.entries(ARC2_DIFFS).map(([k, d]) => `<button class="btn${k === "normal" ? "" : " ghost"}" id="diff-${k}" data-diff="${k}">${d.name}<span>${d.blurb}</span></button>`).join("")}</div>`;
+    overlay.hidden = false;
+    overlay.querySelectorAll("[data-diff]").forEach(b => b.onclick = () => {
+      run.diff = b.dataset.diff; run.stage = 1; run.tp = 0; run.finale = 0; run.recent = [];
+      run.current = pickStage2(run);
+      startArcade2Stage(run);
+    });
+    return;
+  }
+  const show = (h, p, label, fn) => { overlay.innerHTML = `<h2>${h}</h2><p>${p}</p><div class="row"><button class="btn" id="arc2Btn">${label}</button></div>`; overlay.hidden = false; $("arc2Btn").onclick = fn; };
+  const fresh = () => { games.arcade2 = newArcade2Run(); setupBoard(); save(); };
+  if (run.phase === "clear") {
+    const goingFinale = !run.finale && run.tp >= ARC2_THRESH;
+    show(run.finale ? `Finale ${run.finale} clear` : `Stage ${run.stage} clear`,
+      `+${run.lastPts.toLocaleString()} time points (${fmtTime(run.elapsed / 1000)}, par ${fmtTime(arc2Par(run))}). Total ${run.tp.toLocaleString()}.${goingFinale ? " You've unlocked the finale!" : ""}`,
+      run.finale ? "Next finale stage" : goingFinale ? "Start the finale" : "Next stage", () => nextArcade2Stage(run));
+  } else if (run.phase === "failed") {
+    show("Out of moves", `You lost ${(run.lost || 0).toLocaleString()} time points and stay on this stage. Total ${run.tp.toLocaleString()}.`, "Try again", () => startArcade2Stage(run));
+  } else if (run.phase === "done") {
+    show(`${ARC2_DIFFS[run.diff].name} cleared`, `You finished all four finale stages with ${run.tp.toLocaleString()} time points.`, "New run", fresh);
+  } else { overlay.hidden = true; overlay.innerHTML = ""; }
 }
 function updateArcadeTimer() {
   const el = $("arcTimer"), run = games.arcade && games.arcade.arcade;
@@ -2224,6 +2378,7 @@ function renderArcadeOverlay(g) {
 function renderOverlay() {
   const m = M(), g = games[mode];
   if (m.arcade && g.arcade) { renderArcadeOverlay(g); return; }
+  if (m.arcade2 && g.arcade2) { renderArcade2Overlay(g); return; }
   if (g.won && !g.keepGoing && !g.over) {
     const head = m.count ? (m.winText || `You made ${m.count} tiles of ${m.top.toLocaleString()}+`)
       : m.need === "all" ? `You made ${m.goals.map(x => x.toLocaleString()).join(" and ")}`
@@ -2291,7 +2446,7 @@ function renderStats() {
     const s = stats[m.id];
     const head = m.group !== lastGroup ? `<tr class="group"><th colspan="5">${m.group}</th></tr>` : "";
     lastGroup = m.group;
-    return head + `<tr class="${m.id === mode ? "current" : ""}"><td><b>${m.arcade ? "Arcade" : m.label}</b><span class="mname">${m.arcade ? "12 stages + boss" : m.name + " · " + (m.dyn ? "custom" : dimsOf(m))}</span></td>
+    return head + `<tr class="${m.id === mode ? "current" : ""}"><td><b>${m.arcade ? "Arcade" : m.arcade2 ? "Arcade 2" : m.label}</b><span class="mname">${m.arcade ? "12 stages + boss" : m.arcade2 ? "Time points + finale" : m.name + " · " + (m.dyn ? "custom" : dimsOf(m))}</span></td>
       <td>${s.best.toLocaleString()}</td><td>${chip(s.bestTile, m, s.bestTileK)}</td><td>${s.played}</td><td>${s.wins}</td></tr>`;
   }).join("");
 
@@ -2313,18 +2468,18 @@ function renderPicker() {
     MODES.filter(m => m.group === gname).map(m => {
       const best = stats[m.id].best;
       return `<button class="pick" id="pick-${m.id}" data-mode="${m.id}" aria-pressed="${m.id === mode}">
-        <b class="${m.goals.length > 1 || m.arcade ? "long" : ""}" style="color:${m.arcade ? "var(--accent)" : pickColor(m)}">${m.arcade ? "Arcade" : m.label}</b>
+        <b class="${m.goals.length > 1 || m.arcade || m.arcade2 ? "long" : ""}" style="color:${m.arcade || m.arcade2 ? "var(--accent)" : pickColor(m)}">${m.arcade ? "Arcade" : m.arcade2 ? "Arcade 2" : m.label}</b>
         <span class="nm">${m.name}</span>
-        <span class="meta">${m.arcade ? "12 stages + boss" : m.dyn ? "any size" : dimsOf(m)}${m.goalTag ? " · " + m.goalTag.toLowerCase() : ""}${best ? " · best " + best.toLocaleString() : ""}</span></button>`;
+        <span class="meta">${m.arcade ? "12 stages + boss" : m.arcade2 ? "4 difficulties" : m.dyn ? "any size" : dimsOf(m)}${m.goalTag ? " · " + m.goalTag.toLowerCase() : ""}${best ? " · best " + best.toLocaleString() : ""}</span></button>`;
     }).join("") + `</div></div>`).join("");
   $("picker").querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => { setMode(b.dataset.mode); openPanel(null); board.focus(); }));
 }
 
 function renderSaves() {
   const g = games[mode];
-  const arc = !!M().arcade;
+  const arc = !!(M().arcade || M().arcade2);
   ["copyCur", "saveCur"].forEach(id => $(id).disabled = arc);
-  if (arc) { $("curCode").value = ""; $("curInfo").textContent = "Save codes aren't available in Arcade."; $("prevBlock").hidden = true; return; }
+  if (arc) { $("curCode").value = ""; $("curInfo").textContent = "Save codes aren't available in Arcade modes."; $("prevBlock").hidden = true; return; }
   $("curCode").value = encode(mode, g);
   $("curInfo").textContent = describe(mode, g);
   const p = prev[mode];
@@ -2366,13 +2521,21 @@ function save() {
   store.set(KEY_MODE, mode);
 }
 function stashPrev(id, g) {
-  if (!g || g.moves === 0 || g.arcade) return;
+  if (!g || g.moves === 0 || g.arcade || g.arcade2) return;
   prev[id] = g;
   store.set(KEY_PREV(id), packGame(g));
 }
 
 function startNew(force) {
   const g = games[mode], btn = $("newGame");
+  if (M().arcade2 && g.arcade2) {
+    const r2 = g.arcade2, live = ["play", "failed", "clear"].includes(r2.phase) && (r2.stage > 1 || r2.finale || g.moves > 0);
+    if (live && !force && !confirmTimer) { btn.textContent = "Tap again to restart"; btn.classList.add("warn"); confirmTimer = setTimeout(clearConfirm, 3000); return; }
+    clearConfirm();
+    if (live) recordRun2(g, "quit");
+    games.arcade2 = newArcade2Run(); setupBoard(); save();
+    return;
+  }
   const run = M().arcade && g.arcade;
   const inProgress = run ? ["play", "failed", "clear"].includes(run.phase) && (run.stage > 1 || g.moves > 0) : g.moves > 0 && !g.over;
   if (inProgress && !force && !confirmTimer) {
@@ -2431,6 +2594,7 @@ function loadGame(id, g, msg) {
 function hydrate(saved, m) {
   if (!saved || !Array.isArray(saved.tiles)) return null;
   if (m.arcade) { if (!saved.arcade || !Array.isArray(saved.arcade.plan)) return null; configureArcade(saved.arcade); }
+  if (m.arcade2) { if (!saved.arcade2 || !ARC2_DIFFS[saved.arcade2.diff]) return null; configureArcade2(saved.arcade2); }
   const H = m.dyn ? saved.h || 4 : m.rows, W = m.dyn ? saved.w || 4 : m.cols;
   if (saved.tiles.some(t => t.r >= H || t.c >= W)) return null;
   const g = { made: [], bigs: [], ...saved, tiles: saved.tiles.map(t => { const x = { id: nextId++, v: t.v, r: t.r, c: t.c, born: t.b ?? saved.moves ?? 0 }; if (t.k) x.k = t.k; return x; }) };
@@ -2484,7 +2648,7 @@ function renderKeys() {
 function fillDebug() {
   const m = M();
   $("dbgMode").textContent = m.arcade ? "Arcade" : `${m.name} (${m.label})`;
-  const off = !!m.arcade;
+  const off = !!(m.arcade || m.arcade2);
   ["dbgW", "dbgH", "dbgGoals", "dbgNeed", "dbgRungs", "dbgSpawn", "dbgApply", "dbgReset"].forEach(id => $(id).disabled = off);
   if (off) { $("dbgStatus").textContent = "Arcade stages can't be changed in debug mode."; return; }
   $("dbgWH").style.opacity = m.dyn ? 0.5 : 1;
@@ -2545,6 +2709,22 @@ function start(hot) {
     const now = performance.now(), dt = now - lastTick;
     lastTick = now;
     const m = M();
+    if (m.arcade2) {
+      const g2 = games.arcade2, r2 = g2 && g2.arcade2;
+      if (!r2 || r2.phase !== "play" || document.hidden) return;
+      r2.elapsed = (r2.elapsed || 0) + dt;
+      if (m.speed) {
+        r2.clock = (r2.clock || 0) + dt;
+        if (r2.clock >= m.speed) {
+          r2.clock -= m.speed;
+          spawn(g2, m);
+          if (!canMove(g2, m)) { arcade2Fail(g2); sfx.over(); } else sfx.slide();
+          render(); save();
+        }
+      }
+      updateArcade2Timer();
+      return;
+    }
     if (!m.arcade || !m.speed) return;
     const g = games.arcade, run = g && g.arcade;
     if (!run || run.phase !== "play" || document.hidden) return;
@@ -2579,7 +2759,7 @@ function start(hot) {
   $("keysReset").addEventListener("click", () => { settings.keys = { ...DEFAULT_KEYS }; capturing = null; saveSettings(); renderKeys(); });
   $("dbgApply").addEventListener("click", () => {
     const m = M();
-    if (m.arcade) return;
+    if (m.arcade || m.arcade2) return;
     try {
       overrides[m.id] = readDebug(m);
       store.set(KEY_OVR, overrides);
@@ -2592,7 +2772,7 @@ function start(hot) {
   });
   $("dbgReset").addEventListener("click", () => {
     const m = M();
-    if (m.arcade) return;
+    if (m.arcade || m.arcade2) return;
     delete overrides[m.id];
     store.set(KEY_OVR, overrides);
     restoreDefaults(m);
@@ -2702,7 +2882,7 @@ function start(hot) {
 }
 
 // exposed for a quick logic check outside the browser
-if (typeof window.__test2048 === "object") Object.assign(window.__test2048, { MODES, slide, encode, decode, newGame, checkWin, planRun, configureArcade, ARCADE, BY_ID, debugProgress, debugState, isDebug: () => debugMode });
+if (typeof window.__test2048 === "object") Object.assign(window.__test2048, { MODES, slide, encode, decode, newGame, checkWin, planRun, configureArcade, ARCADE, BY_ID, ARC2_FINALES, ARC2_DIFFS, configureArcade2, pickStage2, arc2Par, ARCADE2, debugProgress, debugState, isDebug: () => debugMode });
 else window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
