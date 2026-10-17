@@ -113,6 +113,9 @@ input[type="number"] { width: 4.5em; font-variant-numeric: tabular-nums; }
 .keybtn { appearance: none; font: inherit; cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 8px; padding: 6px 10px; }
 .keybtn b { font-family: var(--mono); font-weight: 400; font-size: 13px; }
 .keybtn[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.dpad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 44px); gap: 6px; justify-content: center; }
+.dpad button { appearance: none; font: inherit; font-size: 20px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 10px; }
+.dpad button:active { background: var(--board); color: #fff; }
 .dims { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .dims label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .dims .goal-preview { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -356,6 +359,8 @@ tr.group th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-tr
       <div class="overlay" id="overlay" hidden></div>
     </div>
 
+    <div class="dpad" id="dpad" hidden></div>
+
     <div class="ladder">
       <div class="ladder-head"><span class="eyebrow" id="ladderTitle">Goal ladder</span><span id="ladderNote"></span></div>
       <div class="rungs" id="rungs"></div>
@@ -401,6 +406,9 @@ const isPrime = n => { if (n < 2) return false; for (let i = 2; i * i <= n; i++)
 const isSquare = n => { const r = Math.round(Math.sqrt(n)); return r * r === n; };
 const powLadder = (b, start, goal) => { const out = []; for (let v = start; v <= goal; v *= b) out.push(v); return out; };
 const asc = a => [...a].sort((x, y) => x - y);
+const DIRV = { left: [0, -1], right: [0, 1], up: [-1, 0], down: [1, 0], ul: [-1, -1], ur: [-1, 1], dl: [1, -1], dr: [1, 1] };
+const ORTH = ["left", "up", "right", "down"], DIAG = ["ul", "ur", "dl", "dr"];
+const OPP = { left: "right", right: "left", up: "down", down: "up", ul: "dr", dr: "ul", ur: "dl", dl: "ur" };
 const lohi2 = (a, b) => [Math.min(a, b), Math.max(a, b)];
 const same = vals => vals.every(v => v === vals[0]);
 const sum = vals => vals.reduce((s, v) => s + v, 0);
@@ -675,6 +683,48 @@ const mergeFibProd = tiles => {
 };
 const isFibNum = v => v === 1 || fibs.includes(v);
 const isTri = n => n > 0 && isSquare(8 * n + 1);
+const numDiv = n => { n = Math.abs(n); let c = 0; for (let i = 1; i * i <= n; i++) if (n % i === 0) c += i * i === n ? 1 : 2; return c; };
+const isComposite = v => v > 3 && !isPrime(v);
+// SCAPRIM: equal tiles, or (a + b) / gcd(a, b) is prime.
+const okScaprim = ([a, b]) => a === b || isPrime((a + b) / gcd(a, b));
+const afterComposite = (g, merges) => {
+  g.x = g.x || { made: [], count: 0 };
+  merges.forEach(t => { if (isComposite(t.v)) { g.x.count++; if (!g.x.made.includes(t.v)) g.x.made.push(t.v); } });
+  return {};
+};
+// FACTUP: the sum must have more divisors than every tile in the merge (or at least as many, in Crazy mode).
+const factupOk = (n, atLeast) => vals => vals.length === n || n === 0 ? (() => {
+  const d = numDiv(sum(vals)), top = Math.max(...vals.map(numDiv));
+  return atLeast ? d >= top : d > top;
+})() : false;
+const afterFactup = (g, merges) => {
+  g.x = g.x || { dc: [1], count: 0 };
+  merges.forEach(t => { const d = numDiv(t.v); if (!g.x.dc.includes(d)) g.x.dc.push(d); });
+  g.x.dc.sort((a, b) => a - b);
+  return {};
+};
+const FACTUP_COMMON = { goals: [1000], size: 4, endless: true, spawn: [[1, 100]], checkWin: () => false, afterMerge: afterFactup,
+  initX: () => ({ dc: [1], count: 0 }),
+  cleanX: x => ({ dc: Array.isArray(x && x.dc) ? x.dc.filter(v => Number.isInteger(v) && v > 0) : [1], count: 0 }),
+  tagline: "Endless. See how many different factor counts you can make.",
+  ladderFrom: g => (g.x ? g.x.dc : [1]).slice(), isHit: () => true, ladderTitle: "Factor counts made",
+  ladderNote: g => `${(g.x ? g.x.dc : [1]).length} different factor counts` };
+// 1365 1366: two equal odd tiles, or an even tile with a tile 1 away from it.
+const ok1365 = ([a, b]) => { const [lo, hi] = lohi2(a, b); return (lo === hi && lo % 2 === 1) || (hi - lo === 1); };
+// Powers of 12, by difficulty.
+const P12 = n => 12 ** n;
+const ok12Easy = vals => { const s = sum(vals);
+  for (let n = 0; n <= 3; n++) { if (P12(n + 1) % s) continue; if (vals.some(v => v % P12(n) === 0 && v < P12(n + 1))) return true; } return false; };
+const ok12Normal = vals => { const s = sum(vals);
+  for (let n = 0; n <= 3; n++) { if (vals.every(v => v % P12(n) === 0) && P12(n + 1) % s === 0) return true; } return false; };
+const ok12Hard = vals => { if (!same(vals)) return false; const t = vals[0], s = sum(vals);
+  let n = 0; while (t % P12(n + 1) === 0) n++;
+  return nice12(s) && s <= P12(n + 1); };
+const ok12VeryHard = vals => [1, -1].some(sg => {
+  const u = asc(vals.map(v => v * sg));
+  if (u.length === 2) return u[0] === u[1] && u[0] > 0 && (isPow(u[0], 12) || (u[0] % 3 === 0 && isPow(u[0] / 3, 12)) || (u[0] % 6 === 0 && isPow(u[0] / 6, 12)));
+  return u.length === 3 && u[0] < 0 && u[1] === u[2] && isPow(-u[0], 12) && u[1] === -2 * u[0];
+});
 const TRI_LIST = Array.from({ length: 30 }, (_, i) => (i + 2) * (i + 3) / 2);
 // 1093 1094: consecutive numbers, or a power of 3 with a tile less than 1 away from half of it.
 const ok1093 = ([a, b]) => { const [lo, hi] = lohi2(a, b); return hi === lo + 1 || (isPow(hi, 3) && Math.abs(lo - hi / 2) < 1); };
@@ -930,6 +980,20 @@ const MODES = [
     examples: [[[2, 2], 4], [[2, 2, 4], 8], [[4, 4, 8], 16], [[8, 8, 16], 32], [[4, 4], 0]] },
   p2Mode("dyn-2048", "Dynamic goals", 2048, 4, { group: "Powers of 2 · any size", dyn: true,
     rule: p2Rule + " Pick a width and a height from 2 to 8 above the board. The goal grows with the number of cells: 2048 on 4×4, 128 on 3×3, 65,536 on 5×5." }),
+  p2Mode("diag-sw", "Diagonal swipes", 2048, 4, { group: "Controls", dirs: [...ORTH, ...DIAG], swipe: "eight",
+    rule: p2Rule + " Tiles can slide in eight directions, diagonals included. Swipes are more sensitive and read in eight directions. On a keyboard, Q, E, Z and C (or 7, 9, 1 and 3) slide diagonally." }),
+  p2Mode("diag-bt", "Diagonal buttons", 2048, 4, { group: "Controls", dirs: [...ORTH, ...DIAG], pad: DIAG,
+    rule: p2Rule + " Tiles can slide in eight directions. Swipe as usual for up, down, left and right, and use the diagonal buttons under the board (or Q, E, Z and C) for diagonals." }),
+  p2Mode("diag-ex", "Diagonal only", 2048, 4, { group: "Controls", dirs: DIAG, swipe: "diag", pad: DIAG,
+    rule: p2Rule + " Tiles only slide diagonally. Swipe toward a corner, use the buttons under the board, or press Q, E, Z and C (or 7, 9, 1 and 3)." }),
+  p2Mode("inv-256", "Inverted, easy", 256, 4, { group: "Controls", invert: true, spawn: [[2, 85], [4, 10], [8, 5]],
+    rule: p2Rule + " The controls are reversed: left slides right, up slides down, and swipes go the opposite way." }),
+  p2Mode("inv-512", "Inverted, normal", 512, 4, { group: "Controls", invert: true,
+    rule: p2Rule + " The controls are reversed: left slides right, up slides down, and swipes go the opposite way." }),
+  p2Mode("inv-1024", "Inverted, hard", 1024, 4, { group: "Controls", invert: true, spawn: [[2, 95], [4, 5]],
+    rule: p2Rule + " The controls are reversed: left slides right, up slides down, and swipes go the opposite way. 4s spawn only 5% of the time." }),
+  p2Mode("inv-2048", "Inverted, brutal", 2048, 4, { group: "Controls", invert: true, spawn: [[2, 100]],
+    rule: p2Rule + " The controls are reversed: left slides right, up slides down, and swipes go the opposite way. Only 2s spawn." }),
 
   { id: "pa-mix-243", group: "Powers of 3", name: "Partial absorb mix", family: "Powers of 3, partial absorb", goals: [243], size: 5,
     spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, merge: mergeAbsorbMix, ladder: powLadder(3, 1, 243),
@@ -969,6 +1033,23 @@ const MODES = [
     rule: "Only three equal tiles in a row merge (n + n + n). Pairs never merge.",
     examples: [[[1, 1, 1], 3], [[3, 3, 3], 9], [[243, 243, 243], 729], [[1, 1], 0]] },
 
+  { id: "e12-1728", group: "Powers of 12", name: "Easy", family: "Powers of 12", goals: [1728], size: 4,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4, ok: ok12Easy, ladder: powLadder(12, 1, 1728),
+    rule: "Any number of tiles merge when one of them is a multiple of a power of 12 (n) but less than the next one, and the tiles add up to a divisor of that next power. So 1 + 2 makes 3, 12 + 3 + 1 makes 16 (a divisor of 144), and 72 + 72 makes 144.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[2, 2], 4], [[3, 3], 6], [[12, 3, 1], 16], [[72, 72], 144], [[5, 6], 0]] },
+  { id: "n12-1728", group: "Powers of 12", name: "Normal", family: "Powers of 12", goals: [1728], size: 4,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4, ok: ok12Normal, ladder: powLadder(12, 1, 1728),
+    rule: "Any number of tiles merge when they're all multiples of the same power of 12 and add up to a divisor of the next power of 12. So 1 + 1 + 2 makes 4, 4 + 2 makes 6, and 36 + 36 + 72 makes 144.",
+    examples: [[[1, 1], 2], [[1, 1, 2], 4], [[4, 2], 6], [[6, 6], 12], [[36, 36, 72], 144], [[12, 3], 0]] },
+  { id: "b12-1728", group: "Powers of 12", name: "Hard", family: "Powers of 12", goals: [1728], size: 5,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4, ok: ok12Hard, ladder: powLadder(12, 1, 1728),
+    rule: "Two, three or four equal tiles merge when their sum is 1, 2, 3, 4 or 6 times a power of 12 and isn't more than the next power of 12 above the tiles. That's why four tiles of 6 times a power of 12 can't merge.",
+    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[2, 2, 2], 6], [[3, 3, 3, 3], 12], [[6, 6], 12], [[1, 2], 0]] },
+  { id: "vh12-1728", group: "Powers of 12", name: "Very hard", family: "Powers of 12, plus and minus", goals: [1728], size: 6, neg: true, absTop: true,
+    spawn: [[1, 50], [-1, 50]], maxK: 3, ok: ok12VeryHard, ladder: powLadder(12, 1, 1728),
+    tagline: "Slide and merge tiles to reach 1,728 or −1,728.",
+    rule: "For a power of 12 (n): n + n, 2n + 2n + (−n), 3n + 3n and 6n + 6n merge, and the same with every sign flipped. So 2 + 2 + (−1) makes 3, and −2 + (−2) + 1 makes −3. Reach 1,728 or −1,728 to win.",
+    examples: [[[1, 1], 2], [[-1, -1], -2], [[2, 2, -1], 3], [[-2, -2, 1], -3], [[3, 3], 6], [[6, 6], 12], [[1, -1], 0]] },
   p4Mode("p4-256", "Lower goal", 256),
   p4Mode("p4-768", "Slightly lower", 768, [...powLadder(4, 1, 256), 768]),
   { id: "b4-1024", group: "Powers of 4", name: "Powers of 4", family: "Powers of 4", goals: [1024], size: 5,
@@ -1060,17 +1141,6 @@ const MODES = [
     ladder: powLadder(11, 1, 1331),
     rule: "For a power of 11 (n): n + n, n + 2n, n + 2n + 3n, and 2n + 3n + 6n merge. When three in a row can merge, the three go first.",
     examples: [[[1, 1], 2], [[1, 2], 3], [[1, 2, 3], 6], [[2, 3, 6], 11], [[2, 2], 0]] },
-  { id: "b12-1728", group: "Other bases", name: "Powers of 12", family: "Powers of 12", goals: [1728], size: 5,
-    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4,
-    ok: vals => same(vals) && nice12(sum(vals)) && !(vals.length === 4 && strip(vals[0], 12) === 6),
-    ladder: powLadder(12, 1, 1728),
-    rule: "Two, three or four equal tiles merge when their sum is 1, 2, 3, 4, 6 or 12 times a power of 12. Four tiles that are each 6 times a power of 12 don't merge.",
-    examples: [[[1, 1], 2], [[1, 1, 1], 3], [[2, 2, 2], 6], [[3, 3, 3, 3], 12], [[6, 6], 12], [[6, 6, 6, 6], 0], [[2, 2, 2, 2], 0]] },
-  { id: "e12-1728", group: "Other bases", name: "Easier powers of 12", family: "Powers of 12, easier merges", goals: [1728], size: 4,
-    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 2, ok: ([a, b]) => nice12(a + b),
-    ladder: powLadder(12, 1, 1728),
-    rule: "Any two tiles merge when their sum is 1, 2, 3, 4 or 6 (the proper factors of 12) times a power of 12, like 2, 6, 12, 24, 36 or 72.",
-    examples: [[[1, 1], 2], [[1, 2], 3], [[2, 4], 6], [[5, 7], 12], [[12, 24], 36], [[2, 3], 0]] },
   { id: "b13-2197", group: "Other bases", name: "Powers of 13", family: "Powers of 13", goals: [2197], size: 4,
     spawn: [[1, 85], [2, 8], [3, 5], [4, 2]], maxK: 2, ok: recipes(13, [[1, 1], [1, 2], [1, 3], [2, 4], [3, 6], [4, 9]]),
     ladder: powLadder(13, 1, 2197),
@@ -1325,6 +1395,11 @@ const MODES = [
     ladder: [1, 2, 6, 30, 240, 3120], ladderTitle: "Fibonorials",
     rule: "Each tile has a level N, starting at 0 for a 1. A tile merges with the tile before it in its own run (2 + 1, 9 + 6, 15 + 9, like Fibonacci) up to N times in a row, then it must merge with an equal tile, which raises N by 1. While that count is below N, the only merge allowed is with the tile before it. The goals along the way are products of Fibonacci numbers: 2, 6, 30, 240 and 3120. Each tile shows its count as count/N, so 1/2 means one step taken out of two.",
     examples: [[[[1, "0,0,0"], [1, "0,0,0"]], [2, "1,1,0"]], [[[2, "1,1,0"], 1], [3, "1,2,1"]], [[[3, "1,2,1"], 3], [6, "2,3,0"]], [[[6, "2,3,0"], 3], [9, "2,6,1"]], [[[9, "2,6,1"], 6], [15, "2,9,2"]], [[[15, "2,9,2"], 15], [30, "3,15,0"]], [[[15, "2,9,2"], 9], 0]] },
+  { id: "s-1365", group: "Sequences", name: "1365 1366", family: "Odd doubles and neighbors", goals: [1365, 1366], need: "any", size: 4,
+    spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2, ok: ok1365,
+    ladder: [1, 2, 5, 10, 21, 42, 85, 170, 341, 682, 1365, 1366],
+    rule: "Two equal odd tiles merge (5 + 5), and an even tile merges with a tile 1 away from it (10 + 11, 10 + 9, or 682 + 683). Make a 1,365 or a 1,366 to win.",
+    examples: [[[1, 1], 2], [[2, 3], 5], [[5, 5], 10], [[10, 11], 21], [[21, 21], 42], [[682, 683], 1365], [[683, 683], 1366], [[2, 2], 0]] },
   { id: "fib-2584", group: "Sequences", name: "Fibonacci", family: "Fibonacci", goals: [2584], size: 4,
     spawn: [[1, 85], [2, 10], [3, 5]], maxK: 2,
     ok: ([a, b]) => { const [lo, hi] = lohi2(a, b); if (lo === 1 && hi === 1) return true; const i = fibs.indexOf(hi); return i > 0 && fibs[i - 1] === lo; },
@@ -1403,11 +1478,21 @@ const MODES = [
   { id: "prod-2496", group: "Mixed rules", name: "Products", family: "Products of two numbers", goals: [2496], size: 4,
     spawn: [[1, 90, 1], [2, 10, 2]], maxK: 2, merge: mergeProd,
     kindOk: (k, v) => Number.isInteger(k) && k > 0 && v % k === 0 && v / k <= k,
-    text: (v, k) => `${v / k}×${k}`,
+    text: v => fmtV(v), sub: (v, k) => k ? `${v / k}×${k}` : "",
     ladder: [...powLadder(2, 1, 2048), 2496],
     tagline: "Slide and merge tiles to reach a product of 2,496 or more.",
-    rule: "Every tile is a product of two numbers. Two tiles merge when their larger numbers match, and their smaller numbers add: 3×11 + 5×11 makes 8×11. If the sum passes the larger number, they swap places: 5×11 + 8×11 makes 11×13.",
+    rule: "Every tile is a product of two numbers: it shows the product, with the two numbers underneath. Two tiles merge when their larger numbers match, and their smaller numbers add: 3×11 + 5×11 makes 8×11. If the sum passes the larger number, they swap places: 5×11 + 8×11 makes 11×13.",
     examples: [[[[1, 1], [1, 1]], [2, 2]], [[[2, 2], [2, 2]], [4, 2]], [[[33, 11], [55, 11]], [88, 11]], [[[55, 11], [88, 11]], [143, 13]], [[[2, 2], [1, 1]], 0]] },
+  { id: "prod3-2511", group: "Mixed rules", name: "Products of three", family: "Products of two numbers", goals: [2511], size: 5,
+    spawn: [[1, 100, 1]], maxK: 3,
+    merge: tiles => { if (tiles.length !== 3 || !tiles[0].k || tiles.some(t => t.k !== tiles[0].k)) return null;
+      const k = tiles[0].k, small = sum(tiles.map(t => t.v / t.k)); return { v: small * k, k: Math.max(small, k) }; },
+    kindOk: (k, v) => Number.isInteger(k) && k > 0 && v % k === 0 && v / k <= k,
+    text: v => fmtV(v), sub: (v, k) => k ? `${v / k}×${k}` : "",
+    ladder: [...powLadder(3, 1, 2187), 2511],
+    tagline: "Slide and merge tiles to reach a product of 2,511 or more.",
+    rule: "Every tile is a product of two numbers: it shows the product, with the two numbers underneath. Three tiles merge when their larger numbers match, and their smaller numbers add: 1×3 + 1×3 + 3×3 makes 5×3, shown as 3×5. Only 1×1 tiles spawn.",
+    examples: [[[[1, 1], [1, 1], [1, 1]], [3, 3]], [[[3, 3], [3, 3], [3, 3]], [9, 3]], [[[3, 3], [3, 3], [9, 3]], [15, 5]], [[[1, 1], [1, 1]], 0]] },
   { id: "tb-2295", group: "Ratios", name: "Turn-based ratios", family: "Ratios by turn", goals: [2295], size: 4,
     spawn: [[1, 100]], maxK: 2, ok: ([a, b], turn) => { const [lo, hi] = lohi2(a, b); return hi === lo * turnRatio(turn); },
     turnHint: t => `Move ${t}: ${turnRatio(t) === 1 ? "two equal tiles merge." : `a tile merges with one ${turnRatio(t)} times its value.`}`,
@@ -1477,6 +1562,24 @@ const MODES = [
     ladderNote: g => { const x = g.x || { tri: [], count: 0 }; return `${x.tri.length} different, ${x.count} total`; },
     rule: "Two equal tiles merge. A bigger tile also merges with a smaller one when the smaller tile is a multiple of (2 × their ratio − 1). For 30 and 12, the ratio is 5/2, so 2 × 5/2 − 1 = 4, and 12 is a multiple of 4. Put another way, a tile merges with its triangular multiples, even fractional ones, and any valid merge still works when both tiles are multiplied by the same number. Only 3s spawn. There's no goal; for a side challenge, see how many triangular numbers you can make.",
     examples: [[[3, 3], 6], [[6, 3], 9], [[9, 6], 15], [[18, 12], 30], [[30, 12], 42], [[45, 9], 54], [[9, 3], 0]] },
+  { id: "scaprim", group: "Endless", name: "SCAPRIM", family: "Scaled primes", goals: [1000], label: "SCAPRIM", size: 4, endless: true,
+    spawn: [[1, 100]], maxK: 2, ok: okScaprim, checkWin: () => false, afterMerge: afterComposite,
+    initX: () => ({ made: [], count: 0 }),
+    cleanX: x => ({ made: Array.isArray(x && x.made) ? x.made.filter(v => Number.isInteger(v) && isComposite(v)) : [], count: x && Number.isInteger(x.count) ? x.count : 0 }),
+    tagline: "Endless. See how many composite tiles you can make.",
+    ladderFrom: g => (g.x ? asc(g.x.made) : []).slice(-24), isHit: () => true, ladderTitle: "Composite tiles made",
+    ladderNote: g => { const x = g.x || { made: [], count: 0 }; return `${x.made.length} different, ${x.count} total`; },
+    rule: "Two tiles merge when they're equal or their sum is prime, and any valid merge still works with both tiles multiplied by the same number. In practice: divide the sum by the tiles' greatest common factor, and if that's prime, they merge. So 48 + 3 makes 51, because 51 ÷ 3 = 17. Only 1s spawn.",
+    examples: [[[1, 1], 2], [[2, 1], 3], [[3, 2], 5], [[3, 6], 9], [[4, 6], 10], [[48, 3], 51], [[4, 5], 0]] },
+  { id: "factup", group: "Endless", name: "FACTUP", family: "More factors", label: "FACTUP", ...FACTUP_COMMON, maxK: 2, ok: factupOk(2, false),
+    rule: "Two tiles merge when their sum has more factors than either tile. So 1 + 1 makes 2 (2 factors beats 1), and 2 + 4 makes 6 (4 factors beats 3). Only 1s spawn. There's no goal: see how many different factor counts you can make.",
+    examples: [[[1, 1], 2], [[2, 2], 4], [[2, 4], 6], [[4, 4], 8], [[6, 6], 12], [[1, 2], 0], [[2, 3], 0]] },
+  { id: "factup-c", group: "Endless", name: "FACTUP crazy", family: "At least as many factors", label: "FACTUP", ...FACTUP_COMMON, maxK: 2, ok: factupOk(2, true),
+    rule: "Two tiles merge when their sum has at least as many factors as each tile. So 1 + 2 makes 3 (2 factors ties 2) on top of the normal FACTUP merges. Only 1s spawn. There's no goal: see how many different factor counts you can make.",
+    examples: [[[1, 1], 2], [[1, 2], 3], [[2, 3], 5], [[4, 5], 9], [[2, 4], 6], [[4, 9], 0]] },
+  { id: "factup-3", group: "Endless", name: "Three-tile FACTUP", family: "More factors, three at a time", label: "FACTUP", ...FACTUP_COMMON, size: 5, maxK: 3, ok: factupOk(3, false),
+    rule: "Three tiles merge when their sum has more factors than any of the three. So 1 + 1 + 1 makes 3, and 2 + 2 + 2 makes 6. Pairs never merge. Only 1s spawn. There's no goal: see how many different factor counts you can make.",
+    examples: [[[1, 1, 1], 3], [[1, 1, 2], 4], [[2, 2, 2], 6], [[3, 3, 6], 12], [[1, 1], 0]] },
   { id: "xn", group: "Powers of n", name: "Powers of n", family: "Powers of n", goals: [1000], count: 4, label: "XXXX", size: 6,
     spawn: [[1, 100]], maxK: 6, kinds: [2, 3, 4, 5, 6], hsl: true,
     merge: tiles => {
@@ -1853,18 +1956,30 @@ const topT = (g, m = M()) => g.tiles.reduce((x, t) => !isOp(t) && (!x || mag(t.v
 const topTile = (g, m = M()) => (topT(g, m) || { v: 0 }).v;
 
 // Pure: returns the board after sliding, without changing g.
+// Lines of cells for a direction, each ordered from the edge the tiles slide toward. Works for diagonals too.
+const lineCache = new Map();
+function linesFor(dir, R, C) {
+  const key = dir + R + "x" + C;
+  if (lineCache.has(key)) return lineCache.get(key);
+  const [dr, dc] = DIRV[dir], groups = new Map();
+  const gk = (r, c) => dr === 0 ? "r" + r : dc === 0 ? "c" + c : dr === dc ? "d" + (r - c) : "a" + (r + c);
+  for (let r = 0; r < R; r++) for (let c = 0; c < C; c++) { const k = gk(r, c); if (!groups.has(k)) groups.set(k, []); groups.get(k).push([r, c]); }
+  const out = [...groups.values()].map(cells => cells.sort((a, b) => (b[0] * dr + b[1] * dc) - (a[0] * dr + a[1] * dc)));
+  lineCache.set(key, out);
+  return out;
+}
 function slide(g, m, dir, turn = g.moves + 1) {
-  const R = m.rows, C = m.cols, horiz = dir === "left" || dir === "right";
-  const lines = horiz ? R : C, len = horiz ? C : R;
+  const R = m.rows, C = m.cols;
+  const LINES = linesFor(dir, R, C), lines = LINES.length;
   const grid = Array.from({ length: R }, () => Array(C).fill(null));
   g.tiles.forEach(t => { if (t.r < R && t.c < C) grid[t.r][t.c] = t; });
-  const cellAt = (line, k) => dir === "left" ? [line, k] : dir === "right" ? [line, C - 1 - k] : dir === "up" ? [k, line] : [R - 1 - k, line];
+  const cellAt = (line, k) => LINES[line][k];
   const tiles = [], dying = [], merges = [];
   let moved = false, gained = 0, destroyed = 0;
 
   for (let line = 0; line < lines; line++) {
     const row = [];
-    for (let k = 0; k < len; k++) { const [r, c] = cellAt(line, k); if (grid[r][c]) row.push(grid[r][c]); }
+    for (let k = 0; k < LINES[line].length; k++) { const [r, c] = cellAt(line, k); if (grid[r][c]) row.push(grid[r][c]); }
     let i = 0, slot = 0;
     while (i < row.length) {
       const [r, c] = cellAt(line, slot++);
@@ -1917,7 +2032,7 @@ function slide(g, m, dir, turn = g.moves + 1) {
 function canMove(g, m) {
   if (g.tiles.length < m.rows * m.cols) return true;
   const probe = nextId;
-  const ok = ["left", "right", "up", "down"].some(d => slide(g, m, d).moved);
+  const ok = (m.dirs || ORTH).some(d => slide(g, m, d).moved);
   nextId = probe;
   return ok;
 }
@@ -1944,6 +2059,8 @@ function checkWin(g, m, merges = []) {
 
 function move(dir) {
   const m = M(), g = games[mode];
+  if (m.invert) dir = OPP[dir];
+  if (!(m.dirs || ORTH).includes(dir)) return;
   if (m.arcade && (!g.arcade || g.arcade.phase !== "play")) return;
   if (m.arcade2 && (!g.arcade2 || g.arcade2.phase !== "play")) return;
   if (g.over || (g.won && !g.keepGoing)) return;
@@ -2236,6 +2353,15 @@ function setupBoard() {
   if (m.boardBg) { board.style.setProperty("--board", m.boardBg); board.style.setProperty("--cell", m.cellBg); }
   else { board.style.removeProperty("--board"); board.style.removeProperty("--cell"); }
   $("dims").hidden = !m.dyn;
+  const pad = $("dpad");
+  pad.hidden = !m.pad;
+  if (m.pad) {
+    const ARROW = { ul: "↖", up: "↑", ur: "↗", left: "←", right: "→", dl: "↙", down: "↓", dr: "↘" };
+    const NAME = { ul: "up-left", up: "up", ur: "up-right", left: "left", right: "right", dl: "down-left", down: "down", dr: "down-right" };
+    pad.innerHTML = ["ul", "up", "ur", "left", "", "right", "dl", "down", "dr"].map(d =>
+      d && m.pad.includes(d) ? `<button id="pad-${d}" data-dir="${d}" aria-label="Slide ${NAME[d]}">${ARROW[d]}</button>` : "<span></span>").join("");
+    pad.querySelectorAll("button").forEach(b => b.addEventListener("click", () => { move(b.dataset.dir); board.focus(); }));
+  }
   if (m.dyn) { $("dimW").value = m.cols; $("dimH").value = m.rows; updateDimGoal(); }
   if (!$("debugPanel").hidden) fillDebug();
   $("cells").innerHTML = "<div></div>".repeat(m.rows * m.cols);
@@ -2630,6 +2756,7 @@ async function saveTxt(id, g) {
 const DEFAULT_KEYS = { left: "ArrowLeft", up: "ArrowUp", right: "ArrowRight", down: "ArrowDown" };
 const WASD = { a: "left", w: "up", d: "right", s: "down" };
 const DIRS = ["left", "up", "right", "down"];
+const DIAG_KEYS = { q: "ul", e: "ur", z: "dl", c: "dr", Home: "ul", PageUp: "ur", End: "dl", PageDown: "dr", "7": "ul", "9": "ur", "1": "dl", "3": "dr" };
 let capturing = null;
 const keyLabel = k => ({ ArrowLeft: "←", ArrowUp: "↑", ArrowRight: "→", ArrowDown: "↓", " ": "Space" })[k] || (k.length === 1 ? k.toUpperCase() : k);
 const normKey = k => k.length === 1 ? k.toLowerCase() : k;
@@ -2853,7 +2980,8 @@ function start(hot) {
     if (e.key === "Escape") { openPanel(null); return; }
     const tag = e.target && e.target.tagName;
     if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
-    const d = keyToDir(e.key);
+    let d = keyToDir(e.key);
+    if (!d && (M().dirs || ORTH).some(x => DIAG.includes(x))) d = DIAG_KEYS[normKey(e.key)] || null;
     if (!d) return;
     e.preventDefault();
     move(d);
@@ -2864,8 +2992,14 @@ function start(hot) {
   board.addEventListener("pointerup", e => {
     if (!tracking) return;
     tracking = false;
-    const dx = e.clientX - sx, dy = e.clientY - sy;
-    if (Math.max(Math.abs(dx), Math.abs(dy)) < 24) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy, m = M();
+    if (Math.max(Math.abs(dx), Math.abs(dy)) < (m.swipe === "eight" ? 14 : 24)) return;
+    if (m.swipe === "diag") { move(dy < 0 ? (dx < 0 ? "ul" : "ur") : (dx < 0 ? "dl" : "dr")); return; }
+    if (m.swipe === "eight") {
+      const sector = Math.round(Math.atan2(dy, dx) / (Math.PI / 4));
+      move({ 0: "right", 1: "dr", 2: "down", 3: "dl", 4: "left", "-4": "left", "-3": "ul", "-2": "up", "-1": "ur" }[sector]);
+      return;
+    }
     move(Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
   });
   board.addEventListener("pointercancel", () => { tracking = false; });
