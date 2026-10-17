@@ -116,6 +116,48 @@ input[type="number"] { width: 4.5em; font-variant-numeric: tabular-nums; }
 .dpad { display: grid; grid-template-columns: repeat(3, 52px); grid-template-rows: repeat(3, 44px); gap: 6px; justify-content: center; }
 .dpad button { appearance: none; font: inherit; font-size: 20px; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--fg); border-radius: 10px; }
 .dpad button:active { background: var(--board); color: #fff; }
+.mp { display: grid; gap: 12px; }
+.mp-status { font-size: 14px; color: var(--muted); text-align: center; min-height: 1.4em; }
+.mp-status b { color: var(--fg); }
+.mp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 560px) { .mp-grid { grid-template-columns: minmax(0, 1fr); } }
+.mp-player { display: grid; gap: 8px; min-width: 0; }
+.mp-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.mp-head b { font-family: var(--display); font-size: 17px; }
+.mp-head span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mp-player.win .mp-head b { color: var(--accent); }
+.mp-out { position: absolute; inset: 0; border-radius: 14px; background: var(--overlay); display: grid; place-items: center; z-index: 5; font-family: var(--display); font-weight: 700; font-size: 20px; text-align: center; padding: 8px; }
+.mp-pad { grid-template-columns: repeat(3, 46px); grid-template-rows: repeat(3, 40px); }
+.mp-keys { font-size: 12px; color: var(--muted); text-align: center; }
+.learn-tabs { display: flex; flex-wrap: wrap; gap: 6px; }
+.learn-tabs button { appearance: none; font: inherit; font-weight: 600; font-size: 13px; cursor: pointer; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 99px; padding: 6px 12px; }
+.learn-tabs button[aria-selected="true"] { background: var(--board); color: #fff; border-color: var(--board); }
+.lesson { display: grid; gap: 14px; min-width: 0; }
+.lesson select { max-width: 100%; width: 100%; }
+.lesson .examples { flex-wrap: wrap; }
+#learn { min-width: 0; overflow-wrap: anywhere; }
+.lesson section { display: grid; gap: 6px; }
+.lesson h4 { margin: 0; font-family: var(--display); font-size: 16px; }
+.lesson p { margin: 0; max-width: 62ch; }
+.lesson ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; max-width: 62ch; }
+.mini-row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.mini { display: grid; gap: 3px; background: var(--board); padding: 4px; border-radius: 6px; }
+.mini span { width: 26px; height: 26px; border-radius: 4px; display: grid; place-items: center; font-family: var(--display); font-weight: 700; font-size: 11px; background: var(--t-bg, var(--cell)); color: var(--t-fg, transparent); }
+.mini-arrow { font-size: 13px; color: var(--muted); font-weight: 600; }
+.test-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 6px; max-height: 420px; overflow: auto; padding-right: 4px; }
+.test-item { appearance: none; font: inherit; cursor: pointer; text-align: left; display: grid; gap: 2px; border: 1px solid var(--line); background: var(--bg); color: var(--fg); border-radius: 10px; padding: 8px 10px; }
+.test-item:hover { border-color: var(--muted); }
+.test-item.done { border-color: var(--accent); }
+.test-item .tn { font-size: 11px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; gap: 6px; }
+.test-item .tt { font-size: 13px; font-weight: 600; }
+.test-item .tm { font-size: 12px; color: var(--muted); }
+.dots { letter-spacing: 1px; color: var(--accent); }
+.quiz { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg); }
+.quiz .opts { display: grid; gap: 6px; }
+.quiz .opts button { text-align: left; }
+.undo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
+.undo-bar input[type="range"] { flex: 1 1 160px; width: auto; }
+.undo-bar span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
 .dims { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; }
 .dims label { font-size: 13px; font-weight: 600; color: var(--muted); }
 .dims .goal-preview { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -253,12 +295,18 @@ tr.group th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-tr
         <span class="caret" id="modeBtnCaret">Change mode</span>
       </button>
       <button class="btn ghost" id="savesBtn" aria-expanded="false" aria-controls="saves">Save code</button>
+      <button class="btn ghost" id="learnBtn" aria-expanded="false" aria-controls="learn">Learn</button>
       <button class="btn ghost" id="settingsBtn" aria-expanded="false" aria-controls="settings">Settings</button>
       <button class="btn ghost" id="debugBtn" aria-expanded="false" aria-controls="debugPanel" hidden>Debug</button>
       <button class="btn" id="newGame">New game</button>
     </div>
 
     <div class="panel-box" id="picker" hidden></div>
+
+    <div class="panel-box" id="learn" hidden>
+      <div class="learn-tabs" role="tablist" id="learnTabs"></div>
+      <div id="learnBody"></div>
+    </div>
 
     <div class="panel-box" id="settings" hidden>
       <div class="eyebrow">Settings</div>
@@ -352,6 +400,31 @@ tr.group th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-tr
     </div>
 
     <div class="arcade" id="arcadeHud" hidden></div>
+
+    <div class="undo-bar" id="undoBar" hidden>
+      <button class="btn small ghost" id="undoBtn">Undo</button>
+      <button class="btn small ghost" id="redoBtn">Redo</button>
+      <input type="range" id="undoRange" min="0" max="0" value="0" aria-label="Jump to a move">
+      <span id="undoLabel"></span>
+    </div>
+
+    <div class="mp" id="mp" hidden>
+      <div class="mp-status" id="mpStatus" role="status"></div>
+      <div class="mp-grid">
+        <section class="mp-player" id="mpP0">
+          <div class="mp-head"><b>Player 1</b><span id="mpScore0"></span></div>
+          <div class="board" id="mpBoard0"><div class="cells"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div><div class="tiles" id="mpTiles0"></div><div class="mp-out" id="mpOut0" hidden></div></div>
+          <div class="dpad mp-pad" id="mpPad0"></div>
+          <div class="mp-keys">Keys: W A S D</div>
+        </section>
+        <section class="mp-player" id="mpP1">
+          <div class="mp-head"><b>Player 2</b><span id="mpScore1"></span></div>
+          <div class="board" id="mpBoard1"><div class="cells"><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div></div><div class="tiles" id="mpTiles1"></div><div class="mp-out" id="mpOut1" hidden></div></div>
+          <div class="dpad mp-pad" id="mpPad1"></div>
+          <div class="mp-keys">Keys: arrow keys</div>
+        </section>
+      </div>
+    </div>
 
     <div class="board" id="board" aria-label="Game board" tabindex="0">
       <div class="cells" id="cells"></div>
@@ -927,6 +1000,8 @@ const factOk = vals => {
 const MODES = [
   { id: "arcade", group: "Arcade", name: "Arcade", arcade: true, family: "Arcade", goals: [128], size: 4,
     spawn: P2_SPAWN, maxK: 2, ok: p2, ladder: powLadder(2, 2, 128), rule: p2Rule, examples: p2Ex(128) },
+  { id: "test", group: "Tests", name: "Test", test: true, hidden: true, family: "Test", goals: [128], size: 4,
+    spawn: P2_SPAWN, maxK: 2, ok: p2, ladder: powLadder(2, 2, 128), rule: p2Rule, examples: p2Ex(128) },
   { id: "arcade2", group: "Arcade", name: "Arcade 2", arcade2: true, family: "Arcade 2", goals: [128], size: 4,
     spawn: P2_SPAWN, maxK: 2, ok: p2, ladder: powLadder(2, 2, 128), rule: p2Rule, examples: p2Ex(128) },
   p2Mode("3x3-64", "Small, easier", 64, 3),
@@ -942,6 +1017,8 @@ const MODES = [
   p2Mode("4096", "Harder", 4096, 4),
   p2Mode("hs-2048", "Harder spawning", 2048, 4, { spawn: [[2, 70], [4, 10], [8, 10], [16, 10]],
     rule: p2Rule + " New tiles are often 8s and 16s, which clutter the board." }),
+  p2Mode("undo-2048", "Undo", 2048, 4, { undo: true,
+    rule: p2Rule + " You can undo as many moves as you like with the Undo button, Ctrl+Z or U, redo them with Redo, Ctrl+Y or R, or drag the timeline to jump to any earlier move. Making a new move from an earlier point replaces the moves after it." }),
   p2Mode("tr-4096", "4096 trainer", 4096, 4, { firstSpawns: [2048],
     rule: p2Rule + " One of the two starting tiles is always a 2048, so you can practise going past it." }),
   p2Mode("i3-2048", "3 starting tiles", 2048, 4, { initCount: 3, rule: p2Rule + " Games start with three tiles instead of two." }),
@@ -980,6 +1057,12 @@ const MODES = [
     examples: [[[2, 2], 4], [[2, 2, 4], 8], [[4, 4, 8], 16], [[8, 8, 16], 32], [[4, 4], 0]] },
   p2Mode("dyn-2048", "Dynamic goals", 2048, 4, { group: "Powers of 2 · any size", dyn: true,
     rule: p2Rule + " Pick a width and a height from 2 to 8 above the board. The goal grows with the number of cells: 2048 on 4×4, 128 on 3×3, 65,536 on 5×5." }),
+  p2Mode("coop-2048", "Cooperative", 2048, 4, { group: "Multiplayer", mp: true, mpKind: "coop", label: "Co-op",
+    tagline: "Two players, two boards, one team goal.",
+    rule: p2Rule + " Two players share the screen, each with their own board and buttons (or W A S D for player 1 and the arrow keys for player 2). The team wins when one board has a 2048 and the other has a 1024 and a 512 as its two highest tiles, or one board has 2048 and 1024 as its two highest and the other has a 1024." }),
+  p2Mode("vs-2048", "Competitive", 2048, 4, { group: "Multiplayer", mp: true, mpKind: "vs", label: "Versus",
+    tagline: "Two players race to 2048.",
+    rule: p2Rule + " Two players share the screen, each with their own board and buttons (or W A S D for player 1 and the arrow keys for player 2). The first to make a 2048 wins. A player whose board fills up is out; if both are out, the higher top tile wins, then the higher score." }),
   p2Mode("diag-sw", "Diagonal swipes", 2048, 4, { group: "Controls", dirs: [...ORTH, ...DIAG], swipe: "eight",
     rule: p2Rule + " Tiles can slide in eight directions, diagonals included. Swipes are more sensitive and read in eight directions. On a keyboard, Q, E, Z and C (or 7, 9, 1 and 3) slide diagonally." }),
   p2Mode("diag-bt", "Diagonal buttons", 2048, 4, { group: "Controls", dirs: [...ORTH, ...DIAG], pad: DIAG,
@@ -1041,6 +1124,14 @@ const MODES = [
     spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4, ok: ok12Normal, ladder: powLadder(12, 1, 1728),
     rule: "Any number of tiles merge when they're all multiples of the same power of 12 and add up to a divisor of the next power of 12. So 1 + 1 + 2 makes 4, 4 + 2 makes 6, and 36 + 36 + 72 makes 144.",
     examples: [[[1, 1], 2], [[1, 1, 2], 4], [[4, 2], 6], [[6, 6], 12], [[36, 36, 72], 144], [[12, 3], 0]] },
+  { id: "n12-864", group: "Powers of 12", name: "Normal, smaller goal", family: "Powers of 12", goals: [864], size: 4,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4, ok: ok12Normal, ladder: [...powLadder(12, 1, 144), 864],
+    rule: "Any number of tiles merge when they're all multiples of the same power of 12 and add up to a divisor of the next power of 12. 864 is 6 × 144, so it's made from multiples of 144 that add up to 864.",
+    examples: [[[1, 1], 2], [[1, 1, 2], 4], [[4, 2], 6], [[6, 6], 12], [[288, 288, 288], 864], [[12, 3], 0]] },
+  { id: "n12-5184", group: "Powers of 12", name: "Normal, larger goal", family: "Powers of 12", goals: [5184], size: 4,
+    spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4, ok: ok12Normal, ladder: [...powLadder(12, 1, 1728), 5184],
+    rule: "Any number of tiles merge when they're all multiples of the same power of 12 and add up to a divisor of the next power of 12. 5,184 is 3 × 1,728, so three 1,728s merge into it.",
+    examples: [[[1, 1], 2], [[1, 1, 2], 4], [[6, 6], 12], [[36, 36, 72], 144], [[1728, 1728, 1728], 5184], [[12, 3], 0]] },
   { id: "b12-1728", group: "Powers of 12", name: "Hard", family: "Powers of 12", goals: [1728], size: 5,
     spawn: [[1, 80], [2, 10], [3, 5], [4, 5]], maxK: 4, ok: ok12Hard, ladder: powLadder(12, 1, 1728),
     rule: "Two, three or four equal tiles merge when their sum is 1, 2, 3, 4 or 6 times a power of 12 and isn't more than the next power of 12 above the tiles. That's why four tiles of 6 times a power of 12 can't merge.",
@@ -1623,7 +1714,7 @@ const BY_ID = Object.fromEntries(MODES.map(m => [m.id, m]));
    reconfigured from the stage's base mode each time a stage starts. */
 const ARCADE = BY_ID.arcade;
 const BOSS = 13, BLANK_AFTER = 6, BOSS_SPEED = 10000;
-const ARCADE_KEEP = new Set(["id", "group", "name", "arcade", "arcade2"]);
+const ARCADE_KEEP = new Set(["id", "group", "name", "arcade", "arcade2", "test", "hidden"]);
 const ARCADE_SKIP = new Set(["id", "group", "name", "label", "labelHtml", "goals", "top", "need", "count", "countIf", "together", "dyn",
   "tagline", "winText", "ladderTitle", "slotLabel", "boardBg", "cellBg", "rows", "cols"]);
 const ARCADE_POOLS = [
@@ -1714,6 +1805,17 @@ function newArcade2Run() {
   g.arcade2 = run;
   return g;
 }
+const TESTS = [{"n":1,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"You slide left on a row of 2 2 2 2. What do you get?","options":["4 4 \u00b7 \u00b7","8 \u00b7 \u00b7 \u00b7","4 2 2 \u00b7","2 4 2 \u00b7"],"answer":0,"explain":"Each tile merges only once per move, and pairs nearest the wall merge first."},{"n":2,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"You slide left on 4 2 2 \u00b7. What do you get?","options":["4 4 \u00b7 \u00b7","8 \u00b7 \u00b7 \u00b7","4 2 2 \u00b7","2 2 4 \u00b7"],"answer":0,"explain":"The 2s merge into a 4, but the new 4 can\u2019t merge again in the same move."},{"n":3,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"You slide right on 2 2 2 \u00b7. What do you get?","options":["\u00b7 \u00b7 2 4","\u00b7 \u00b7 4 2","\u00b7 \u00b7 \u00b7 6","\u00b7 2 2 2"],"answer":0,"explain":"Sliding right, the pair nearest the right wall merges first."},{"n":4,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"What appears after every move that changes the board?","options":["A 2 or a 4 in an empty cell","Always a 2 in a corner","A tile matching your biggest tile","Nothing until the board is half empty"],"answer":0,"explain":"A new 2 (90%) or 4 (10%) appears in a random empty cell."},{"n":5,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"When is the game over?","options":["The board is full and no two touching tiles match","The board is full","You make a 2048","You go 10 moves without a merge"],"answer":0,"explain":"A full board can still move if two neighbors match."},{"n":6,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"How many points does merging two 64s score?","options":["128","64","256","0"],"answer":0,"explain":"Each merge scores the value of the new tile."},{"n":7,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"Which new tile appears more often in regular 2048?","options":["2","4","They are equally likely","8"],"answer":0,"explain":"2s appear 90% of the time and 4s 10%."},{"n":8,"mode":"2048","kind":"quiz","mech":1,"effort":1,"title":"Why keep your biggest tile in a corner?","options":["It stays out of the way and bigger tiles can line up next to it","Corner tiles score double","Corners never get new tiles","It unlocks a bonus"],"answer":0,"explain":"A cornered big tile lets you build a descending chain beside it."},{"n":9,"mode":"2048","kind":"puzzle","mech":1,"effort":1,"title":"Make a 64 in 1 move","board":[[2,3,32],[3,0,32],[2,2,32],[3,1,8],[1,1,4]],"target":64,"limit":1},{"n":10,"mode":"2048","kind":"puzzle","mech":1,"effort":1,"title":"Make a 128 in 1 move","board":[[0,1,2],[1,2,64],[2,1,16],[1,0,64],[2,0,2]],"target":128,"limit":1},{"n":11,"mode":"2048","kind":"puzzle","mech":1,"effort":1,"title":"Make a 128 in 2 moves","board":[[2,3,16],[1,3,32],[2,0,4],[3,2,4],[1,1,64],[0,3,64],[2,2,2],[3,1,8]],"target":128,"limit":2},{"n":12,"mode":"2048","kind":"puzzle","mech":1,"effort":1,"title":"Make a 64 in 2 moves","board":[[2,3,4],[2,0,16],[1,2,32],[1,1,8],[1,0,16],[3,0,32]],"target":64,"limit":2},{"n":13,"mode":"2048","kind":"puzzle","mech":1,"effort":1,"title":"Make a 64 in 2 moves","board":[[2,2,16],[2,3,32],[1,1,2],[3,0,4],[2,0,2],[0,2,32],[1,0,4]],"target":64,"limit":2},{"n":14,"mode":"2048","kind":"puzzle","mech":1,"effort":2,"title":"Make a 128 in 3 moves","board":[[3,1,32],[0,0,2],[2,3,2],[0,1,64],[0,2,8],[3,0,8],[1,2,32],[0,3,16]],"target":128,"limit":3},{"n":15,"mode":"2048","kind":"puzzle","mech":1,"effort":2,"title":"Make a 64 in 3 moves","board":[[0,3,2],[2,2,32],[3,1,4],[3,0,4],[1,1,2],[2,1,2],[0,1,16],[0,0,16],[2,0,8]],"target":64,"limit":3},{"n":16,"mode":"2048","kind":"puzzle","mech":1,"effort":2,"title":"Make a 128 in 3 moves","board":[[3,0,32],[2,1,64],[3,3,16],[0,1,2],[1,0,32],[2,3,8],[1,1,8],[3,1,16],[1,2,4],[0,2,8]],"target":128,"limit":3},{"n":17,"mode":"2048","kind":"puzzle","mech":1,"effort":2,"title":"Make a 128 in 4 moves","board":[[1,0,32],[2,2,2],[1,3,32],[3,2,8],[1,1,64],[3,3,32],[0,1,2],[2,3,16],[2,0,8],[0,3,2]],"target":128,"limit":4},{"n":18,"mode":"2048","kind":"puzzle","mech":1,"effort":2,"title":"Make a 256 in 4 moves","board":[[0,1,16],[0,2,16],[0,0,64],[1,2,64],[3,3,64],[0,3,4],[1,3,64]],"target":256,"limit":4},{"n":19,"mode":"2048","kind":"puzzle","mech":1,"effort":2,"title":"Make a 256 in 4 moves","board":[[0,0,4],[1,1,2],[1,0,8],[3,0,64],[0,2,2],[2,0,64],[1,3,64],[2,2,64]],"target":256,"limit":4},{"n":20,"mode":"2048","kind":"puzzle","mech":1,"effort":3,"title":"Make a 128 in 5 moves","board":[[3,2,2],[2,3,64],[1,2,4],[0,1,2],[0,0,64],[1,3,8],[2,2,8],[1,1,8]],"target":128,"limit":5},{"n":21,"mode":"2048","kind":"puzzle","mech":1,"effort":3,"title":"Make a 64 in 5 moves","board":[[0,3,4],[1,3,2],[3,0,16],[1,0,8],[2,3,2],[2,2,4],[3,2,32]],"target":64,"limit":5},{"n":22,"mode":"2048","kind":"puzzle","mech":1,"effort":3,"title":"Make a 256 in 5 moves","board":[[3,2,64],[3,1,2],[1,3,64],[2,0,64],[0,2,4],[2,1,2],[3,0,64],[2,3,2],[1,0,32],[3,3,64]],"target":256,"limit":5},{"n":23,"mode":"2048","kind":"puzzle","mech":1,"effort":3,"title":"Make a 256 in 6 moves","board":[[3,3,2],[0,3,2],[0,1,8],[0,2,32],[2,3,32],[2,0,32],[3,0,32],[1,0,64],[0,0,16],[3,1,64]],"target":256,"limit":6},{"n":24,"mode":"2048","kind":"puzzle","mech":1,"effort":3,"title":"Make a 128 in 6 moves","board":[[0,2,4],[3,2,8],[2,0,16],[1,1,32],[3,0,64],[1,3,4],[3,1,2],[0,0,16],[2,3,64],[1,0,2]],"target":128,"limit":6},{"n":25,"mode":"2048","kind":"reach","mech":1,"effort":1,"title":"Reach 128","target":128},{"n":26,"mode":"2048","kind":"reach","mech":1,"effort":1,"title":"Reach 256","target":256},{"n":27,"mode":"2048","kind":"reach","mech":1,"effort":2,"title":"Reach 512","target":512},{"n":28,"mode":"2048","kind":"reach","mech":1,"effort":3,"title":"Reach 1024","target":1024},{"n":29,"mode":"2048","kind":"reach","mech":1,"effort":3,"title":"Reach 2048","target":2048},{"n":30,"mode":"3x3-128","kind":"reach","mech":2,"effort":2,"title":"Reach 128 on a 3\u00d73 board","target":128},{"n":31,"mode":"n-1762","kind":"quiz","mech":1,"effort":1,"title":"In Neighbors, which of these merges?","options":["8 + 2","10 + 11","2 + 4","16 + 8"],"answer":1,"explain":"Two tiles merge when they're equal or differ by 1."},{"n":32,"mode":"n-1762","kind":"puzzle","mech":1,"effort":1,"title":"Make a 32 in 2 moves","board":[[1,0,2],[3,2,2],[3,3,16],[0,0,4],[0,2,4],[2,0,16]],"target":32,"limit":2},{"n":33,"mode":"n-1762","kind":"reach","mech":1,"effort":2,"title":"Reach 64","target":64},{"n":34,"mode":"b3-2187","kind":"quiz","mech":2,"effort":1,"title":"In Powers of 3, which of these merges?","options":["9 + 27","1 + 2","2 + 2","81 + 27"],"answer":1,"explain":"A power of 3 merges with an equal tile (n + n) or with its double (n + 2n). Two doubles don't merge."},{"n":35,"mode":"3m-243","kind":"quiz","mech":2,"effort":1,"title":"In 3-merge, which of these merges?","options":["1 + 1","81 + 9 + 27","1 + 3 + 81","27 + 27 + 27"],"answer":3,"explain":"Only three equal tiles in a row merge (n + n + n). Pairs never merge."},{"n":36,"mode":"fib-2584","kind":"quiz","mech":2,"effort":1,"title":"In Fibonacci, which of these merges?","options":["2 + 1","3 + 3","8 + 8","5 + 2"],"answer":0,"explain":"Two 1s merge into a 2. After that, a Fibonacci number merges with the one just before it: 2 + 1, 3 + 2, 5 + 3, and so on."},{"n":37,"mode":"ps-576","kind":"quiz","mech":2,"effort":1,"title":"In Primes & squares, which of these merges?","options":["4 + 36","1 + 1","16 + 2","3 + 3"],"answer":1,"explain":"Any two tiles merge when their sum is a prime number or a perfect square. Reach a tile of 576 (24\u00b2) or more."},{"n":38,"mode":"b4-1024","kind":"quiz","mech":2,"effort":1,"title":"In Powers of 4, which of these merges?","options":["1 + 1","4 + 4 + 4","16 + 16 + 256","64 + 4 + 256"],"answer":1,"explain":"Three equal powers of 4 merge (n + n + n), and that tile merges with one more of the original (3n + n) to reach the next power. Two equal tiles alone don't merge."},{"n":39,"mode":"dual-mix","kind":"quiz","mech":2,"effort":1,"title":"In Dual-mix, which of these merges?","options":["2 + 2","6 + 6","3 + 4","8 + 3"],"answer":0,"explain":"1 + 1 makes 2, 2 + 1 makes 3, and 2 + 2 makes 4. After that, a power of 2 merges with an equal tile (n + n), and a power of 3 merges with an equal tile (n + n) or with the tile double it (n + 2n). Make either a 2048 or a 2187 to win."},{"n":40,"mode":"pell-2378","kind":"quiz","mech":2,"effort":1,"title":"In Pell, which of these merges?","options":["29 + 1","5 + 5","2 + 1 + 1","1 + 1"],"answer":3,"explain":"1 + 1 makes 2. After that, two of a tile merge with one of the tile before it on the ladder, in any order: 2 + 2 + 1, 5 + 5 + 2, 12 + 12 + 5, and so on."},{"n":41,"mode":"trib-1705","kind":"quiz","mech":2,"effort":1,"title":"In Tribonacci, which of these merges?","options":["1 + 1 + 2","4 + 2","2 + 2","4 + 4 + 4"],"answer":0,"explain":"1 + 1 makes 2, and 1 + 1 + 2 makes 4. After that, a tile merges with the two tiles just before it on the ladder, in any order: 4 + 2 + 1, 7 + 4 + 2, 13 + 7 + 4, and so on."},{"n":42,"mode":"s23-3888","kind":"quiz","mech":2,"effort":1,"title":"In 2s and 3s, which of these merges?","options":["2 + 5","2 + 2","972 + 2916","1 + 16"],"answer":2,"explain":"Two 1s merge into a 2. After that, a tile merges with a tile exactly double or triple it."},{"n":43,"mode":"tl-2295","kind":"quiz","mech":2,"effort":1,"title":"In Timeless ratios, which of these merges?","options":["3 + 9","5 + 40"],"answer":1,"explain":"Two tiles merge when one is the other times a power of 2 (1, 2, 4, 8 \u2026)."},{"n":44,"mode":"s-1365","kind":"quiz","mech":2,"effort":1,"title":"In 1365 1366, which of these merges?","options":["10 + 11","3 + 1","3 + 21","2 + 2"],"answer":0,"explain":"Two equal odd tiles merge (5 + 5), and an even tile merges with a tile 1 away from it (10 + 11, 10 + 9, or 682 + 683). Make a 1,365 or a 1,366 to win."},{"n":45,"mode":"h-2048","kind":"quiz","mech":2,"effort":1,"title":"In Harder 2048, which of these merges?","options":["4 + 4","2 + 2","2 + 32","8 + 16"],"answer":1,"explain":"Two 2s merge into a 4. Every other merge takes three tiles: two equal tiles plus one tile double their value (n + n + 2n)."},{"n":46,"mode":"d-1847","kind":"quiz","mech":2,"effort":1,"title":"In Double or near, which of these merges?","options":["1 + 1","2 + 8","2 + 6","1 + 8"],"answer":0,"explain":"Two tiles merge when one is double the other, or double the other plus or minus 1."},{"n":47,"mode":"s-1093","kind":"quiz","mech":2,"effort":1,"title":"In 1093 1094, which of these merges?","options":["4 + 5","9 + 2","9 + 9","2 + 4"],"answer":0,"explain":"Two consecutive numbers merge (like 4 + 5 or 13 + 14). A power of 3 also merges with a tile less than 1 away from half of it, so 9 merges with 4 or 5, and 2187 comes from 1093 + 1094."},{"n":48,"mode":"b6-1296","kind":"quiz","mech":2,"effort":1,"title":"In Powers of 6, which of these merges?","options":["1 + 1 + 1","1 + 2 + 1296","2 + 2","216 + 3 + 1"],"answer":0,"explain":"For a power of 6 (n): two equal tiles merge at n or 3n, and three equal tiles merge at n or 2n. When three in a row can merge, the three go first."},{"n":49,"mode":"g-512","kind":"quiz","mech":2,"effort":1,"title":"In Garbage, which of these merges?","options":["garbage 4 + 4","2 + 2"],"answer":1,"explain":"Two equal tiles merge into their sum. Striped garbage tiles merge only with an equal garbage tile, into bigger garbage. Garbage never counts toward the goal."},{"n":50,"mode":"b3-2187","kind":"puzzle","mech":2,"effort":2,"title":"Make a 486 in 3 moves","board":[[0,1,9],[0,2,3],[0,3,243],[3,1,243],[1,0,27],[3,3,2]],"target":486,"limit":3},{"n":51,"mode":"b3-2187","kind":"reach","mech":2,"effort":2,"title":"Reach 81","target":81},{"n":52,"mode":"3m-243","kind":"puzzle","mech":2,"effort":2,"title":"Make a 81 in 3 moves","board":[[1,0,27],[4,0,9],[1,4,1],[0,1,9],[3,0,27],[3,3,3],[1,2,9]],"target":81,"limit":3},{"n":53,"mode":"3m-243","kind":"reach","mech":2,"effort":2,"title":"Reach 27","target":27},{"n":54,"mode":"fib-2584","kind":"puzzle","mech":2,"effort":2,"title":"Make a 34 in 3 moves","board":[[1,1,8],[2,1,5],[3,2,3],[1,2,3],[0,0,8],[3,0,13],[0,3,3],[1,0,3],[2,0,13],[0,1,8]],"target":34,"limit":3},{"n":55,"mode":"fib-2584","kind":"reach","mech":2,"effort":2,"title":"Reach 89","target":89},{"n":56,"mode":"ps-576","kind":"puzzle","mech":2,"effort":2,"title":"Make a 173 in 3 moves","board":[[1,3,36],[2,3,36],[2,2,100],[3,0,2],[3,3,1],[1,1,4],[0,3,4],[2,0,36],[1,0,2]],"target":173,"limit":3},{"n":57,"mode":"ps-576","kind":"reach","mech":2,"effort":2,"title":"Reach 196","target":196},{"n":58,"mode":"b4-1024","kind":"puzzle","mech":2,"effort":2,"title":"Make a 3,072 in 3 moves","board":[[1,2,1024],[2,4,1024],[4,4,1024],[1,1,64],[1,0,3],[3,3,3],[2,0,1024]],"target":3072,"limit":3},{"n":59,"mode":"b4-1024","kind":"reach","mech":2,"effort":2,"title":"Reach 64","target":64},{"n":60,"mode":"dual-mix","kind":"puzzle","mech":2,"effort":2,"title":"Make a 16 in 3 moves","board":[[1,4,4],[4,2,4],[4,4,1],[0,1,9],[0,3,4],[2,1,8],[1,0,1],[3,3,1],[2,3,3]],"target":16,"limit":3},{"n":61,"mode":"dual-mix","kind":"reach","mech":2,"effort":2,"title":"Reach 81","target":81},{"n":62,"mode":"pell-2378","kind":"puzzle","mech":2,"effort":2,"title":"Make a 169 in 3 moves","board":[[1,3,2],[1,2,5],[4,3,2],[2,0,12],[2,2,70],[0,2,29],[0,1,70],[3,2,5],[2,1,70],[2,3,12]],"target":169,"limit":3},{"n":63,"mode":"pell-2378","kind":"reach","mech":2,"effort":2,"title":"Reach 70","target":70},{"n":64,"mode":"trib-1705","kind":"puzzle","mech":2,"effort":2,"title":"Make a 44 in 3 moves","board":[[2,2,7],[3,4,13],[0,1,24],[4,2,4],[0,4,7],[3,2,7],[2,0,7],[4,1,2],[1,1,1]],"target":44,"limit":3},{"n":65,"mode":"trib-1705","kind":"reach","mech":2,"effort":2,"title":"Reach 81","target":81},{"n":66,"mode":"s23-3888","kind":"puzzle","mech":2,"effort":2,"title":"Make a 24 in 3 moves","board":[[2,1,2],[0,2,1],[2,0,16],[1,1,4],[1,0,2],[3,1,4],[2,2,4]],"target":24,"limit":3},{"n":67,"mode":"s23-3888","kind":"reach","mech":2,"effort":2,"title":"Reach 128","target":128},{"n":68,"mode":"tl-2295","kind":"puzzle","mech":2,"effort":2,"title":"Make a 129 in 3 moves","board":[[1,2,32],[0,3,4],[1,1,32],[2,2,4],[0,1,32],[3,0,1],[0,2,32],[2,1,32],[3,3,2],[3,1,4]],"target":129,"limit":3},{"n":69,"mode":"tl-2295","kind":"reach","mech":2,"effort":2,"title":"Reach 128","target":128},{"n":70,"mode":"s-1365","kind":"puzzle","mech":2,"effort":2,"title":"Make a 11 in 3 moves","board":[[0,3,3],[1,3,1],[3,0,5],[1,0,3],[2,3,1],[2,2,2],[3,2,10]],"target":11,"limit":3},{"n":71,"mode":"s-1365","kind":"reach","mech":2,"effort":2,"title":"Reach 85","target":85},{"n":72,"mode":"h-2048","kind":"puzzle","mech":2,"effort":2,"title":"Make a 64 in 3 moves","board":[[2,0,2],[3,3,16],[0,2,32],[2,3,2],[4,4,16],[4,3,32],[4,0,2]],"target":64,"limit":3},{"n":73,"mode":"h-2048","kind":"reach","mech":2,"effort":2,"title":"Reach 128","target":128},{"n":74,"mode":"d-1847","kind":"puzzle","mech":2,"effort":2,"title":"Make a 48 in 3 moves","board":[[3,1,32],[0,0,16],[3,0,2],[1,2,3],[0,1,3]],"target":48,"limit":3},{"n":75,"mode":"d-1847","kind":"reach","mech":2,"effort":2,"title":"Reach 64","target":64},{"n":76,"mode":"s-1093","kind":"puzzle","mech":2,"effort":2,"title":"Make a 14 in 3 moves","board":[[0,3,9],[2,0,3],[1,2,9],[3,1,2],[1,0,3],[0,2,2]],"target":14,"limit":3},{"n":77,"mode":"s-1093","kind":"reach","mech":2,"effort":2,"title":"Reach 81","target":81},{"n":78,"mode":"b6-1296","kind":"puzzle","mech":2,"effort":2,"title":"Make a 432 in 3 moves","board":[[2,0,36],[3,2,2],[4,2,216],[4,3,2],[2,4,216],[0,2,3]],"target":432,"limit":3},{"n":79,"mode":"b6-1296","kind":"reach","mech":2,"effort":2,"title":"Reach 36","target":36},{"n":80,"mode":"b5-3125","kind":"quiz","mech":3,"effort":1,"title":"In Powers of 5, which of these merges?","options":["5 + 15","5 + 125","5 + 1","3 + 3"],"answer":0,"explain":"Two tiles merge when both are multiples of the same power of 5 and their sum doesn't go past the next power of 5."},{"n":81,"mode":"prim-2310","kind":"quiz","mech":3,"effort":1,"title":"In Primorials, which of these merges?","options":["4 + 4","6 + 6"],"answer":1,"explain":"Tiles with no repeated prime factor merge with an equal tile. A multiple of 4 merges with half of itself, a multiple of 9 with two-thirds of itself, and a multiple of 25 with two-fifths of itself. A multiple of 49 merges with two tiles that are each two-sevenths of it. Three-tile merges can't use a primorial (1, 2, 6, 30, 210, 2310)."},{"n":82,"mode":"b7-2401","kind":"quiz","mech":3,"effort":1,"title":"In Powers of 7, which of these merges?","options":["3 + 1","1 + 2","2 + 2","1 + 49"],"answer":2,"explain":"For a power of 7 (n): n + n, n + n + n, 2n + 2n and 3n + 4n merge. When three in a row can merge, the three go first."},{"n":83,"mode":"pm-10","kind":"quiz","mech":3,"effort":1,"title":"In Plus and minus, which of these merges?","options":["-2 + -2 + 1","2 + 2","1 + -1"],"answer":0,"explain":"Two 1s make 2 and two \u22121s make \u22122. After that, two equal tiles merge with a tile of the opposite sign one step closer to zero: 2 + 2 + (\u22121) \u2192 3, 3 + 3 + (\u22122) \u2192 4, and \u22122 + (\u22122) + 1 \u2192 \u22123. Reach 10 or \u221210 to win."},{"n":84,"mode":"pm-10","kind":"puzzle","mech":3,"effort":1,"title":"Make a 3 in 2 moves","board":[[0,3,1],[3,3,1],[2,3,2],[4,4,1],[3,2,1],[4,1,-1]],"target":3,"limit":2},{"n":85,"mode":"bc-2187","kind":"quiz","mech":3,"effort":1,"title":"In Bicolor, which of these merges?","options":["2 + 1","3 red + 3 red"],"answer":0,"explain":"A power of 3 merges with its double. The new tile is blue when the smaller tile slides into its double, and red when the double slides into the smaller tile. Two equal powers of 3 (other than two 1s) merge only when one is red and one is blue. In the examples, the first tile is the one sliding in."},{"n":86,"mode":"pa-mix-243","kind":"quiz","mech":3,"effort":1,"title":"In Partial absorb mix, which of these merges?","options":["3 + 3","1 + 2"],"answer":0,"explain":"Two equal powers of 3 merge as usual into their sum. Two equal doubles of a power of 3 only absorb half of the other: 2 + 2 makes a 3 and leaves a 1 behind it."},{"n":87,"mode":"bit-2048","kind":"quiz","mech":3,"effort":1,"title":"In Bitwise, which of these merges?","options":["8 + 8","1 + 1","2 + 2","3 + 5"],"answer":1,"explain":"Two tiles merge when they add in binary without carrying, meaning they share no 1 bits (like 1 + 2, 4 + 3, or 8 + 5). A tile that's one less than a power of 2 (1, 3, 7, 15 \u2026) can also merge with a 1."},{"n":88,"mode":"xn","kind":"quiz","mech":3,"effort":1,"title":"In Powers of n, which of these merges?","options":["1 + 1 + 1","4 + 4"],"answer":0,"explain":"Any number of 1s in a row merge, and how many you merge sets the tile's color. A tile of n 1s then needs n matching tiles of the same number and color to merge again: 2 \u2192 4 \u2192 8, or 3 \u2192 9 \u2192 27. Same number, different color doesn't merge. Darker means further along. Make 4 different tiles of 1,000 or more to win; the same number in a different color counts as different."},{"n":89,"mode":"rf-1296","kind":"quiz","mech":3,"effort":1,"title":"In Ratio-fill, which of these merges?","options":["18 + 9","2 + 3"],"answer":0,"explain":"Below 6, two tiles merge when one is a multiple of the other and they add up to 6 or less. From 6 on, a tile climbs to the next power of 6 by merging once each with a tile equal to itself, half of itself, a third, a quarter and a fifth of itself, in any order. Each of those merges fills a bar on the tile, and a filled bar's merge can't happen again. Fill all five and the tile reaches the next power of 6 with empty bars."},{"n":90,"mode":"tri-378","kind":"quiz","mech":3,"effort":1,"title":"In Triangular, which of these merges?","options":["28 + 1 + 28","1 + 1 + 1","3 + 3 + 3","1 + 1"],"answer":1,"explain":"Two or three tiles merge when they add up to a triangular number (1, 3, 6, 10, 15 \u2026). The goal tile starts at 6. Making it clears that tile and moves the goal to the next triangular number. Making any tile bigger than the goal ends the game. Clear the 378 goal to win."},{"n":91,"mode":"prod-2496","kind":"quiz","mech":3,"effort":1,"title":"In Products, which of these merges?","options":["1\u00d72 + 1\u00d72","1\u00d72 + 1\u00d71"],"answer":0,"explain":"Every tile is a product of two numbers: it shows the product, with the two numbers underneath. Two tiles merge when their larger numbers match, and their smaller numbers add: 3\u00d711 + 5\u00d711 makes 8\u00d711. If the sum passes the larger number, they swap places: 5\u00d711 + 8\u00d711 makes 11\u00d713."},{"n":92,"mode":"fn-3120","kind":"quiz","mech":3,"effort":1,"title":"In Fibonorial, a tile shows 1/2 under its number. What can it merge with?","options":["Only the tile before it in its run","Only an equal tile","Any tile","Nothing until it reaches 2/2"],"answer":0,"explain":"1/2 means one step taken out of N = 2. While the count is below N, the tile can only merge with the tile before it in its run; once the count reaches N, it must merge with an equal tile."},{"n":93,"mode":"dive","kind":"quiz","mech":3,"effort":1,"title":"In DIVE, which of these merges?","options":["2 + 3","2 + 4","4 + 6"],"answer":1,"explain":"A tile merges with any of its multiples, so 2 + 6 makes 8 and 3 + 3 makes 6. A merge scores the smaller tile. Only 2s spawn at first. When a new tile has a prime factor that isn't a seed yet, that prime becomes a seed and starts spawning. When no tile on the board is a multiple of a seed any more, the seed is removed and you score its value. There's no goal: make the biggest tile you can, and try to make one with a prime factor of 11 or more."},{"n":94,"mode":"b5-3125","kind":"puzzle","mech":3,"effort":2,"title":"Make a 50 in 3 moves","board":[[1,2,1],[0,0,3],[0,2,25],[0,3,5],[2,0,25]],"target":50,"limit":3},{"n":95,"mode":"b5-3125","kind":"reach","mech":3,"effort":2,"title":"Reach 125","target":125},{"n":96,"mode":"prim-2310","kind":"puzzle","mech":3,"effort":2,"title":"Make a 90 in 3 moves","board":[[1,1,30],[2,2,30],[2,1,2],[3,1,30],[0,1,1],[2,0,4]],"target":90,"limit":3},{"n":97,"mode":"prim-2310","kind":"reach","mech":3,"effort":2,"title":"Reach 30","target":30},{"n":98,"mode":"b7-2401","kind":"puzzle","mech":3,"effort":2,"title":"Make a 14 in 3 moves","board":[[3,1,3],[4,4,3],[1,2,3],[2,0,1],[2,4,7],[0,3,4]],"target":14,"limit":3},{"n":99,"mode":"b7-2401","kind":"reach","mech":3,"effort":2,"title":"Reach 49","target":49},{"n":100,"mode":"pm-10","kind":"reach","mech":3,"effort":2,"title":"Reach 6","target":6}];
+const TEST = BY_ID.test;
+const KEY_TESTS = "2048:tests";
+function configureTest(run) {
+  const t = TESTS[run.n - 1];
+  configureFrom(TEST, t.mode, t.target, {
+    noSpawn: t.kind === "puzzle", moveLimit: t.limit || 0,
+    family: `Test ${t.n} · ${BY_ID[t.mode].name}`,
+    tagline: t.kind === "puzzle" ? `${t.title}. No new tiles appear.` : `${t.title} with ${BY_ID[t.mode].name} rules.`
+  });
+}
 /* ---------- Debug overrides: board size, goals, rungs and spawns per mode ---------- */
 const DEFAULTS = {};
 MODES.forEach(m => { DEFAULTS[m.id] = { rows: m.rows, cols: m.cols, size: m.size, goals: m.goals.slice(), need: m.need, top: m.top,
@@ -1722,7 +1824,7 @@ let overrides = {};
 function restoreDefaults(m) { const d = DEFAULTS[m.id]; if (d) Object.assign(m, d, { goals: d.goals.slice(), ladder: d.ladder.slice() }); }
 function applyOverride(m) {
   const o = overrides[m.id];
-  if (!o || m.arcade || m.arcade2) return;
+  if (!o || m.arcade || m.arcade2 || m.mp || m.test) return;
   if (o.w && !m.dyn) { m.cols = o.w; m.rows = o.h; m.size = Math.max(o.w, o.h); }
   if (o.goals && o.goals.length) {
     m.goals = o.goals.slice();
@@ -1949,7 +2051,7 @@ function newArcadeRun(phase) {
   g.arcade = run;
   return g;
 }
-const makeGame = id => id === "arcade" ? newArcadeRun("intro") : id === "arcade2" ? newArcade2Run() : newGame(BY_ID[id]);
+const makeGame = id => id === "test" ? newGame(BY_ID["2048"]) : id === "arcade" ? newArcadeRun("intro") : id === "arcade2" ? newArcade2Run() : BY_ID[id].mp ? newMp(BY_ID[id]) : newGame(BY_ID[id]);
 const mag = (v, m) => m && m.absTop ? Math.abs(v) : v;
 const isOp = t => t.k === "g" || t.k === "d";
 const topT = (g, m = M()) => g.tiles.reduce((x, t) => !isOp(t) && (!x || mag(t.v, m) > mag(x.v, m)) ? t : x, null);
@@ -2059,10 +2161,12 @@ function checkWin(g, m, merges = []) {
 
 function move(dir) {
   const m = M(), g = games[mode];
+  if (m.mp) return;
   if (m.invert) dir = OPP[dir];
   if (!(m.dirs || ORTH).includes(dir)) return;
   if (m.arcade && (!g.arcade || g.arcade.phase !== "play")) return;
   if (m.arcade2 && (!g.arcade2 || g.arcade2.phase !== "play")) return;
+  if (m.test && (!g.testRun || g.testRun.phase !== "play")) return;
   if (g.over || (g.won && !g.keepGoing)) return;
   const res = slide(g, m, dir);
   if (!res.moved) return;
@@ -2072,7 +2176,7 @@ function move(dir) {
   g.mergeCount = (g.mergeCount || 0) + res.merges.length;
   const after = m.afterMerge ? m.afterMerge(g, res.merges) : {};
   if (after.lose) g.loseText = after.lose;
-  spawn(g, m);
+  if (!m.noSpawn) spawn(g, m);
 
   const s = stats[mode], top = topT(g);
   const total = m.arcade ? g.arcade.runScore + g.score : m.arcade2 ? g.arcade2.tp : g.score;
@@ -2088,6 +2192,10 @@ function move(dir) {
   if (justWon) g.won = true;
   if (m.arcade) { if (justWon) arcadeClear(g); else if (!canMove(g, m)) arcadeFail(g); }
   else if (m.arcade2) { if (justWon) arcade2Clear(g); else if (!canMove(g, m)) arcade2Fail(g); }
+  else if (m.test) {
+    if (justWon) { g.testRun.phase = "pass"; markTest(g.testRun.n); }
+    else if ((m.moveLimit && g.moves >= m.moveLimit) || !canMove(g, m)) { g.testRun.phase = "fail"; g.over = true; }
+  }
   else if (g.loseText || !canMove(g, m)) { g.over = true; record(g, g.won ? "won" : "over"); }
 
   if (justWon) sfx.win();
@@ -2098,6 +2206,7 @@ function move(dir) {
   } else if (res.destroyed) sfx.garbage();
   else sfx.slide();
 
+  if (m.undo) pushSnap(g);
   render(res.dying);
   if (res.gained) showGain(res.gained);
   save();
@@ -2173,6 +2282,225 @@ function nextArcade2Stage(run) {
   else { run.stage++; run.current = pickStage2(run); }
   startArcade2Stage(run);
 }
+// ---------- Learn panel ----------
+let learnTab = "beginner", quizN = 0, testFilter = "all", lookupId = "2048";
+const esc = x => String(x).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+const mini = rows => `<div class="mini" style="grid-template-columns:repeat(${rows[0].length},26px)">${rows.flat().map(v => v ? `<span style="${tileStyle(v, BY_ID["2048"])}">${v}</span>` : "<span></span>").join("")}</div>`;
+const step = (a, label, b) => `<div class="mini-row">${mini(a)}<span class="mini-arrow">${label} →</span>${mini(b)}</div>`;
+const playBtn = (id, text) => `<button class="btn small ghost" data-play="${id}">${text || "Try it: " + BY_ID[id].name}</button>`;
+const LESSONS = {
+  beginner: () => `
+    <section><h4>The goal</h4>
+      <p>2048 is played on a 4×4 board. Every move slides all the tiles one way, and equal tiles that run into each other merge into one tile worth their sum. Keep merging until you make a 2048 tile.</p></section>
+    <section><h4>Moving</h4>
+      <p>Use the arrow keys, WASD, the on-screen buttons, or swipe on the board. Every tile slides as far as it can in that direction, until it hits the wall or another tile.</p>
+      ${step([[0, 2, 0, 4], [0, 0, 0, 0]], "Left", [[2, 4, 0, 0], [0, 0, 0, 0]])}
+      <p>A move that changes nothing on the board doesn't count, and no new tile appears.</p></section>
+    <section><h4>Merging</h4>
+      <ul><li>Two equal tiles that meet merge into one tile worth their sum: 2 + 2 = 4, 4 + 4 = 8, and so on up to 1024 + 1024 = 2048.</li>
+        <li>Different tiles never merge: a 2 next to a 4 just stops.</li>
+        <li>A tile merges at most once per move, so 2 2 2 2 becomes 4 4, not 8.</li>
+        <li>The tiles nearest the wall you're moving towards merge first, so 2 2 2 moved left becomes 4 2.</li></ul>
+      ${step([[2, 2, 2, 2], [2, 2, 2, 0]], "Left", [[4, 4, 0, 0], [4, 2, 0, 0]])}
+      ${step([[4, 4, 8, 0]], "Left", [[8, 8, 0, 0]])}
+      <p>That last one shows the once-per-move rule again: the new 8 doesn't merge with the 8 beside it until your next move.</p></section>
+    <section><h4>New tiles</h4>
+      <p>After every move, one new tile appears in a random empty square: a 2 nine times out of ten, a 4 otherwise. The game starts with two of them.</p></section>
+    <section><h4>Winning and losing</h4>
+      <p>Make a 2048 and you win. You can then keep playing for a bigger tile and score. The game is over when the board is full and no two neighbours are equal, so no move is possible.</p>
+      ${step([[2, 4, 2, 4], [4, 2, 4, 2], [2, 4, 2, 4], [4, 2, 4, 8]], "Any move", [[2, 4, 2, 4], [4, 2, 4, 2], [2, 4, 2, 4], [4, 2, 4, 8]])}
+      <div class="row">${playBtn("2048", "Play 2048")}${playBtn("1024", "Start smaller: 1024")}</div></section>`,
+  intermediate: () => `
+    <section><h4>Keep your biggest tile in a corner</h4>
+      <p>Pick a corner, say bottom-left, and keep your biggest tile there. Big tiles in the middle split the board and get boxed in by small tiles.</p>
+      ${mini([[0, 2, 0, 0], [2, 4, 0, 0], [16, 8, 4, 0], [128, 64, 32, 8]])}</section>
+    <section><h4>Use two directions, sometimes three, almost never four</h4>
+      <p>With the big tile bottom-left, Down and Left keep it in place. Right is safe while the bottom row is full, because the row can't shift. Up is the move to avoid: it can pull the corner tile out and let a 2 drop in behind it.</p></section>
+    <section><h4>Keep the edge row full and in order</h4>
+      <p>Fill the bottom row and keep it sorted from big to small, like 128 64 32 8. A full row can't slide sideways, so pressing Right is safe, and each new tile you build next to the row can merge into it.</p></section>
+    <section><h4>How the score works</h4>
+      <ul><li>Each merge adds the new tile's value to your score: merging two 8s adds 16.</li>
+        <li>A tile built entirely from 2s is worth more score than its face value: a 2048 made only from 2s has earned 20,480 points. In general a tile of 2ⁿ is worth (n − 1) × 2ⁿ.</li>
+        <li>Tiles that spawn as 4 skip one merge, so they lower the score a little. That's why two players with the same tiles can have different scores.</li>
+        <li>Your best score per mode is saved, along with recent games, and the Stats table lists games, wins and best tile across all modes.</li></ul></section>
+    <section><h4>The goal ladder</h4>
+      <p>Next to the board, the ladder shows every tile on the way to the goal. Each rung lights up when you first make that tile, so you can see how close you are.</p></section>
+    <section><h4>Deeper mechanics</h4>
+      <ul><li>Merges are checked from the wall outwards, which is why 2 2 2 moved right becomes 2 4, with the 4 against the wall.</li>
+        <li>A merged tile lands where the front tile would have stopped, so merges pull tiles towards the wall.</li>
+        <li>If a move would change nothing, it's ignored: you can't skip a turn to dodge a spawn.</li></ul>
+      ${step([[2, 2, 2, 0]], "Right", [[0, 0, 2, 4]])}
+      <div class="row">${playBtn("2048", "Practice in 2048")}${playBtn("undo-2048", "Practice with undo")}</div></section>`,
+  advanced: () => `
+    <section><h4>The snake</h4>
+      <p>Extend the sorted edge row into a snake: the bottom row runs big to small left to right, the next row runs small to big, and so on. When the smallest tile in the snake merges, the whole chain can collapse into the corner one merge after another.</p>
+      ${mini([[2, 4, 0, 0], [8, 16, 32, 64], [1024, 512, 256, 128], [0, 0, 0, 0]].reverse())}</section>
+    <section><h4>Chain merges</h4>
+      <p>A snake of 1024 512 256 128 64 32 16 8 needs just one more 8 to become a 2048 in eight moves. Build the next tile next to the end of the chain, never somewhere it has to travel to.</p>
+      ${step([[64, 32, 16, 8], [0, 0, 0, 8]], "Up", [[64, 32, 16, 16], [0, 0, 0, 0]])}</section>
+    <section><h4>Think about where tiles will spawn</h4>
+      <ul><li>New tiles drop into any empty square, so before a move, look at which squares will be empty after it.</li>
+        <li>The fewer empty squares you leave next to your big tiles, the less chance a 2 lands somewhere awkward.</li>
+        <li>Keeping four or more squares empty gives you room to fix mistakes; under two, every move matters.</li></ul></section>
+    <section><h4>Recovering from a forced move</h4>
+      <p>Sometimes the only legal move is the one you avoid. If it pulls your corner tile out, move straight back if you can, before another tile spawns in the corner. If a small tile does land there, build it up quickly so it can merge into the row.</p></section>
+    <section><h4>How long a game takes</h4>
+      <p>Merging never creates or removes value, so the board's total always equals the sum of every tile that ever spawned. A spawn averages 2.2, so a 2048 needs at least about 930 moves, and a 4096 about 1,860. That's also a quick way to check whether a goal is reachable at all in a mode with unusual spawns.</p></section>
+    <section><h4>Bigger and smaller boards</h4>
+      <ul><li>On 3×3 there's barely room for a snake: 256 is hard, and every spawn matters.</li>
+        <li>On 5×5 and larger, the same corner and snake ideas work, with more slack to recover.</li>
+        <li>Undo 2048 lets you rewind any number of moves, so it's a good place to try a risky idea and see where it leads.</li></ul>
+      <div class="row">${playBtn("3x3-128")}${playBtn("5x5-65536")}${playBtn("undo-2048")}</div></section>`,
+  rulesets: () => {
+    const fam = [
+      ["Powers of n", "In powers of 3, 4, 5 and up, you merge n equal tiles at once, or n − 1 tiles plus a bigger one in some modes. Each mode's examples show exactly what merges.", "b3-2187"],
+      ["Three-tile merges", "Some modes need three tiles in a row to merge, like 81 + 81 + 81 = 243. Lines of two won't do anything.", "3m-243"],
+      ["Sequences", "Fibonacci, Pell, Tribonacci and Narayana modes merge neighbouring terms of a sequence, so 3 + 5 = 8 in Fibonacci. Unequal tiles merge here.", "fib-2584"],
+      ["Neighbours and sums", "Neighbors merges tiles that are equal or differ by 1. Modes like 576 mix primes and squares with their own recipes.", "n-1762"],
+      ["Garbage and blanks", "Garbage tiles block the board until you clear them, and some modes hide tile numbers after a few moves.", "g-512"],
+      ["Colours and kinds", "Bicolor, Dual and HSL modes give tiles a colour or kind as well as a number, and the kinds decide what can merge.", "bc-2187"],
+      ["Negative tiles", "In the 10 mode, tiles can be negative, and you win at 10 or −10. Opposite tiles cancel out.", "pm-10"],
+      ["Controls", "Diagonal modes add four diagonal moves; Inverted modes flip every direction.", "diag-sw"],
+      ["Undo", "Undo 2048 plays like classic 2048, but you can rewind or jump to any earlier move as often as you like.", "undo-2048"]
+    ].filter(([, , id]) => BY_ID[id]);
+    const m = BY_ID[lookupId] || BY_ID["2048"];
+    const groups = [...new Set(MODES.filter(x => !x.hidden && !x.arcade && !x.arcade2).map(x => x.group))];
+    const wsum = m.spawn ? m.spawn.reduce((a, e) => a + e[1], 0) || 1 : 1;
+    const ex = (m.examples || []).map(([ins, out]) => {
+      const parts = ins.map(x => { const t = tv(x); return chip(t.v, m, t.k); }).join('<span class="op">+</span>');
+      if (out && out.tiles) return `<span class="ex">${parts}<span class="op">→</span>${out.tiles.map(x => { const o = tv(x); return chip(o.v, m, o.k); }).join('<span class="op">and</span>')}</span>`;
+      if (out === "gone") return `<span class="ex">${parts}<span class="op">→</span><span class="op">both gone</span></span>`;
+      if (!out) return `<span class="ex no">${parts}<span class="x" aria-label="no merge">✕</span></span>`;
+      const o = tv(out); return `<span class="ex">${parts}<span class="op">→</span>${chip(o.v, m, o.k)}</span>`;
+    }).join("");
+    return `<section><h4>Families of rules</h4><p>Every mode uses the same sliding as 2048. What changes is which tiles merge, what spawns, the board size and the goal.</p></section>
+      ${fam.map(([h, p, id]) => `<section><h4>${h}</h4><p>${p}</p><div class="row">${playBtn(id)}<button class="btn small ghost" data-look="${id}">See its rules</button></div></section>`).join("")}
+      <section id="lookup"><h4>Look up any mode</h4>
+        <select id="lookupSel" aria-label="Mode">${groups.map(gr => `<optgroup label="${esc(gr)}">${MODES.filter(x => x.group === gr && !x.hidden && !x.arcade && !x.arcade2).map(x => `<option value="${x.id}"${x.id === m.id ? " selected" : ""}>${esc(x.name)}${x.label ? " · " + esc(x.label) : ""}</option>`).join("")}</optgroup>`).join("")}</select>
+        <div class="quiz"><b>${esc(m.name)}${m.label ? " · " + esc(m.label) : ""} · ${dimsOf(m)}</b>
+          <p>${esc(m.rule || "")}</p>
+          ${ex ? `<div class="examples">${ex}</div>` : ""}
+          ${m.spawn ? `<p class="muted">${esc(m.spawnText || "New tiles: " + m.spawn.map(([v, pr, k, lbl]) => `${k === "g" ? "garbage " : ""}${fmtV(v)} (${lbl || Math.round(pr * 100 / wsum) + "%"})`).join(", "))}</p>` : ""}
+          <div class="row">${playBtn(m.id, "Play this mode")}</div></div></section>`;
+  },
+  tests: () => {
+    const done = testsDone(), nDone = TESTS.filter(t => done[t.n]).length;
+    const dots = k => "●".repeat(k) + "○".repeat(3 - k);
+    const kindName = { quiz: "Quiz", puzzle: "Puzzle", reach: "Reach" };
+    const q = quizN && TESTS[quizN - 1];
+    const list = TESTS.filter(t => testFilter === "all" || (testFilter === "todo" ? !done[t.n] : t.kind === testFilter));
+    return `<section><h4>100 tests · ${nDone} passed</h4>
+      <p>Take them in any order. Tests 1 to 30 use classic 2048; later ones cover other modes. Each has two ratings from 1 to 3: <b>Mechanics</b> is how tricky the rules are, <b>Effort</b> is how much play it takes. Quizzes are answered here; puzzles give you a fixed board, no new tiles and a move limit; reach tests are a normal game to a smaller goal.</p>
+      <div class="learn-tabs">${[["all", "All"], ["todo", "Not passed"], ["quiz", "Quizzes"], ["puzzle", "Puzzles"], ["reach", "Reach"]].map(([k, l]) => `<button data-tf="${k}" aria-selected="${testFilter === k}">${l}</button>`).join("")}</div></section>
+      ${q ? `<div class="quiz" id="quizBox"><div class="tn muted">Test ${q.n} · ${esc(BY_ID[q.mode].name)} · Mechanics <span class="dots">${dots(q.mech)}</span> · Effort <span class="dots">${dots(q.effort)}</span></div>
+        <b>${esc(q.title)}</b><div class="opts">${q.options.map((o, i) => `<button class="btn ghost" data-opt="${i}">${esc(o)}</button>`).join("")}</div><p id="quizMsg" aria-live="polite"></p>
+        <div class="row"><button class="btn small ghost" data-rules="${q.mode}">See ${esc(BY_ID[q.mode].name)} rules</button><button class="btn small ghost" id="quizClose">Close</button></div></div>` : ""}
+      <div class="test-list">${list.map(t => `<button class="test-item${done[t.n] ? " done" : ""}" data-test="${t.n}">
+        <span class="tn"><span>${t.n} · ${kindName[t.kind]}${done[t.n] ? " ✓" : ""}</span><span>M <span class="dots">${dots(t.mech)}</span> E <span class="dots">${dots(t.effort)}</span></span></span>
+        <span class="tt">${esc(t.kind === "quiz" ? t.title.replace(/\?.*$/, "?") : t.title)}</span><span class="tm">${esc(BY_ID[t.mode].name)}</span></button>`).join("")}</div>`;
+  }
+};
+function renderLearn() {
+  const tabs = [["beginner", "Beginner"], ["intermediate", "Intermediate"], ["advanced", "Advanced"], ["rulesets", "Rulesets"], ["tests", "Tests"]];
+  $("learnTabs").innerHTML = tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${learnTab === k}">${l}</button>`).join("");
+  const body = $("learnBody");
+  body.className = "lesson";
+  body.innerHTML = LESSONS[learnTab]();
+  $("learnTabs").querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { learnTab = b.dataset.tab; renderLearn(); });
+  body.querySelectorAll("[data-play]").forEach(b => b.onclick = () => { openPanel(null); setMode(b.dataset.play); board.focus(); });
+  body.querySelectorAll("[data-look]").forEach(b => b.onclick = () => { lookupId = b.dataset.look; renderLearn(); $("lookup").scrollIntoView({ block: "start" }); });
+  body.querySelectorAll("[data-rules]").forEach(b => b.onclick = () => { lookupId = b.dataset.rules; learnTab = "rulesets"; renderLearn(); $("lookup").scrollIntoView({ block: "start" }); });
+  body.querySelectorAll("[data-tf]").forEach(b => b.onclick = () => { testFilter = b.dataset.tf; renderLearn(); });
+  body.querySelectorAll("[data-test]").forEach(b => b.onclick = () => {
+    const t = TESTS[+b.dataset.test - 1];
+    if (t.kind === "quiz") { quizN = t.n; renderLearn(); $("quizBox").scrollIntoView({ block: "nearest" }); }
+    else startTest(t.n);
+  });
+  if ($("lookupSel")) $("lookupSel").onchange = e => { lookupId = e.target.value; renderLearn(); };
+  if ($("quizClose")) $("quizClose").onclick = () => { quizN = 0; renderLearn(); };
+  body.querySelectorAll("[data-opt]").forEach(b => b.onclick = () => {
+    const q = TESTS[quizN - 1], i = +b.dataset.opt, right = i === q.answer;
+    body.querySelectorAll("[data-opt]").forEach((x, j) => { x.disabled = true; if (j === q.answer) x.style.borderColor = "var(--accent)"; });
+    if (!right) b.style.textDecoration = "line-through";
+    if (right) markTest(q.n);
+    $("quizMsg").innerHTML = `<b>${right ? "Correct." : "Not quite."}</b> ${esc(q.explain)} ${right ? "" : '<button class="btn small ghost" id="quizAgain">Try again</button>'}`;
+    const next = TESTS[q.n];
+    if (right && next) $("quizMsg").insertAdjacentHTML("beforeend", ` <button class="btn small" id="quizNext">Next test</button>`);
+    if ($("quizAgain")) $("quizAgain").onclick = () => renderLearn();
+    if ($("quizNext")) $("quizNext").onclick = () => { if (next.kind === "quiz") { quizN = next.n; renderLearn(); } else startTest(next.n); };
+    body.querySelectorAll(".test-item").forEach(x => { if (+x.dataset.test === q.n && right) x.classList.add("done"); });
+  });
+}
+// ---------- Undo timeline ----------
+const snapOf = g => ({ t: g.tiles.map(t => [t.r, t.c, t.v]), s: g.score, n: g.moves, w: g.won, k: g.keepGoing, o: g.over, d: (g.made || []).slice() });
+function pushSnap(g) {
+  g.timeline = (g.timeline || [snapOf(g)]).slice(0, (g.tpos ?? 0) + 1);
+  g.timeline.push(snapOf(g));
+  if (g.timeline.length > 3000) g.timeline.shift();
+  g.tpos = g.timeline.length - 1;
+}
+function jumpTo(i) {
+  const g = games[mode], m = M();
+  if (!m.undo || !g.timeline) return;
+  i = Math.max(0, Math.min(g.timeline.length - 1, i));
+  if (i === g.tpos) return;
+  const sn = g.timeline[i];
+  g.tpos = i;
+  Object.assign(g, { tiles: sn.t.map(([r, c, v]) => ({ id: nextId++, v, r, c, born: sn.n })), score: sn.s, moves: sn.n, won: sn.w, keepGoing: sn.k, over: sn.o, made: sn.d.slice() });
+  for (const el of els.values()) el.remove();
+  els.clear();
+  render([], true);
+  save();
+}
+function renderUndo(g, m) {
+  const bar = $("undoBar");
+  bar.hidden = !m.undo;
+  if (!m.undo) return;
+  if (!g.timeline) { g.timeline = [snapOf(g)]; g.tpos = 0; }
+  const last = g.timeline.length - 1;
+  $("undoRange").max = last; $("undoRange").value = g.tpos;
+  $("undoBtn").disabled = g.tpos <= 0; $("redoBtn").disabled = g.tpos >= last;
+  $("undoLabel").textContent = `Move ${g.timeline[g.tpos].n.toLocaleString()} · ${g.tpos} of ${last} steps`;
+}
+// ---------- Tests ----------
+const testsDone = () => store.get(KEY_TESTS) || {};
+function markTest(n) { const d = testsDone(); d[n] = true; store.set(KEY_TESTS, d); }
+function startTest(n) {
+  const t = TESTS[n - 1], run = { n, phase: "play" };
+  configureTest(run);
+  let g;
+  if (t.kind === "puzzle") g = { tiles: t.board.map(([r, c, v, k]) => ({ id: nextId++, v, r, c, born: 0, ...(k != null ? { k } : {}) })), score: 0, moves: 0, won: false, keepGoing: false, over: false, made: [], bigs: [] };
+  else g = newGame(TEST);
+  g.testRun = run;
+  games.test = g;
+  clearConfirm();
+  mode = "test";
+  openPanel(null);
+  setupBoard(); save(); board.focus();
+}
+function renderTestHud(g) {
+  const run = g.testRun, t = TESTS[run.n - 1], el = $("arcadeHud");
+  el.hidden = false;
+  const dots = k => "●".repeat(k) + "○".repeat(3 - k);
+  el.innerHTML = `<div class="arcade-top"><b>Test ${t.n} of 100</b><span class="arcade-note">Mechanics <span class="dots">${dots(t.mech)}</span> · Effort <span class="dots">${dots(t.effort)}</span></span>
+    ${t.limit ? `<span class="arcade-timer">Moves ${g.moves} of ${t.limit}</span>` : ""}</div>
+    <div class="arcade-note">${t.title}. ${testsDone()[t.n] ? "You've passed this test before." : ""}</div>
+    <div class="row"><button class="btn small ghost" id="testBack">Back to tests</button><button class="btn small ghost" id="testRetry">Restart test</button></div>`;
+  $("testBack").onclick = () => { learnTab = "tests"; openPanel("learn"); };
+  $("testRetry").onclick = () => startTest(t.n);
+}
+function renderTestOverlay(g) {
+  const run = g.testRun, t = TESTS[run.n - 1];
+  if (run.phase === "play") { overlay.hidden = true; overlay.innerHTML = ""; return; }
+  const pass = run.phase === "pass";
+  overlay.innerHTML = `<h2>${pass ? `Test ${t.n} passed` : "Not this time"}</h2>
+    <p>${pass ? "Nice work." : t.limit && g.moves >= t.limit ? `You're out of moves: this one takes exactly ${t.limit}.` : "No moves left."}</p>
+    <div class="row">${pass && t.n < 100 ? '<button class="btn" id="tNext">Next test</button>' : ""}${pass ? "" : '<button class="btn" id="tRetry">Try again</button>'}<button class="btn ghost" id="tList">Back to tests</button></div>`;
+  overlay.hidden = false;
+  if ($("tNext")) $("tNext").onclick = () => { const nt = TESTS[t.n]; if (nt.kind === "quiz") { learnTab = "tests"; quizN = nt.n; openPanel("learn"); } else startTest(nt.n); };
+  if ($("tRetry")) $("tRetry").onclick = () => startTest(t.n);
+  $("tList").onclick = () => { learnTab = "tests"; openPanel("learn"); };
+}
 function arcadeClear(g) {
   const run = g.arcade;
   run.runScore += g.score; g.score = 0;
@@ -2217,7 +2545,7 @@ function record(g, result) {
 
 /* ---------- save codes ---------- */
 const packTile = t => ({ v: t.v, r: t.r, c: t.c, ...(t.k ? { k: t.k } : {}), ...(t.born != null ? { b: t.born } : {}) });
-const packGame = g => ({ tiles: g.tiles.map(packTile), score: g.score, moves: g.moves, won: g.won, keepGoing: g.keepGoing, over: g.over, made: g.made || [], bigs: g.bigs || [], ...(g.bag ? { bag: g.bag.slice() } : {}), ...(g.w ? { w: g.w, h: g.h } : {}), ...(g.arcade ? { arcade: g.arcade } : {}), ...(g.arcade2 ? { arcade2: g.arcade2 } : {}), ...(g.tgoal ? { tgoal: g.tgoal } : {}), ...(g.tWon ? { tWon: true } : {}), ...(g.loseText ? { loseText: g.loseText } : {}), ...(g.x ? { x: JSON.parse(JSON.stringify(g.x)) } : {}), ...(g.mergeCount ? { mergeCount: g.mergeCount } : {}) });
+const packGame = g => ({ tiles: g.tiles.map(packTile), score: g.score, moves: g.moves, won: g.won, keepGoing: g.keepGoing, over: g.over, made: g.made || [], bigs: g.bigs || [], ...(g.bag ? { bag: g.bag.slice() } : {}), ...(g.w ? { w: g.w, h: g.h } : {}), ...(g.arcade ? { arcade: g.arcade } : {}), ...(g.arcade2 ? { arcade2: g.arcade2 } : {}), ...(g.testRun ? { testRun: g.testRun } : {}), ...(g.timeline ? { timeline: g.timeline, tpos: g.tpos } : {}), ...(g.tgoal ? { tgoal: g.tgoal } : {}), ...(g.tWon ? { tWon: true } : {}), ...(g.loseText ? { loseText: g.loseText } : {}), ...(g.x ? { x: JSON.parse(JSON.stringify(g.x)) } : {}), ...(g.mergeCount ? { mergeCount: g.mergeCount } : {}) });
 function encode(id, g) {
   const p = packGame(g);
   const data = { v: 2, m: id, t: p.tiles.map(t => t.k ? [t.r, t.c, t.v, t.k] : [t.r, t.c, t.v]), s: p.score, n: p.moves, w: +p.won, k: +p.keepGoing, o: +p.over, d: p.made };
@@ -2236,7 +2564,7 @@ function decode(code) {
   try { data = JSON.parse(atob(clean)); } catch (e) { throw new Error("That isn't a save code from this game. Check that you copied all of it."); }
   const m = BY_ID[data && data.m];
   if (!m) throw new Error("That code is for a mode this page doesn't have.");
-  if (m.arcade || m.arcade2) throw new Error("Arcade runs can't be loaded from a code.");
+  if (m.arcade || m.arcade2 || m.mp || m.test) throw new Error("That mode can't be loaded from a code.");
   if (!Array.isArray(data.t)) throw new Error("That code has no board in it.");
   const kinds = m.kinds || [];
   const dim = q => Number.isInteger(q) && q >= 2 && q <= 8 ? q : 4;
@@ -2270,12 +2598,11 @@ function fontFor(text, n) {
   const base = d <= 2 ? 11 : d === 3 ? 9 : d === 4 ? 7.2 : d === 5 ? 5.8 : 4.8 * 6 / Math.max(6, d);
   return (base * 4 / n).toFixed(2) + "cqi";
 }
-function render(dying = [], instant = false) {
-  const g = games[mode], m = M();
+function drawTiles(tEl, map, g, m, dying = [], instant = false) {
   dying.forEach(d => {
-    const el = els.get(d.id);
+    const el = map.get(d.id);
     if (!el) return;
-    els.delete(d.id);
+    map.delete(d.id);
     el.classList.add("dying");
     el.style.setProperty("--r", d.r);
     el.style.setProperty("--c", d.c);
@@ -2284,7 +2611,7 @@ function render(dying = [], instant = false) {
   const live = new Set();
   g.tiles.forEach(t => {
     live.add(t.id);
-    let el = els.get(t.id);
+    let el = map.get(t.id);
     if (!el) {
       el = document.createElement("div");
       el.className = "tile" + (instant ? "" : t.merged ? " merged" : " new");
@@ -2310,14 +2637,19 @@ function render(dying = [], instant = false) {
         sd.style.fontSize = (2.6 * 4 / m.cols).toFixed(2) + "cqi";
         sd.textContent = sub;
       }
-      els.set(t.id, el);
-      tilesEl.appendChild(el);
+      map.set(t.id, el);
+      tEl.appendChild(el);
     }
     el.style.setProperty("--r", t.r);
     el.style.setProperty("--c", t.c);
     el.classList.toggle("blank", !!m.blankAfter && g.moves - (t.born ?? g.moves) >= m.blankAfter);
   });
-  for (const [id, el] of els) if (!live.has(id)) { el.remove(); els.delete(id); }
+  for (const [id, el] of map) if (!live.has(id)) { el.remove(); map.delete(id); }
+}
+function render(dying = [], instant = false) {
+  const g = games[mode], m = M();
+  if (m.mp) { renderMp(dying, instant); return; }
+  drawTiles(tilesEl, els, g, m, dying, instant);
 
   $("score").textContent = (m.arcade && g.arcade ? g.arcade.runScore + g.score : m.arcade2 && g.arcade2 ? g.arcade2.tp : g.score).toLocaleString();
   $("best").textContent = stats[mode].best.toLocaleString();
@@ -2329,6 +2661,82 @@ function render(dying = [], instant = false) {
   renderStats();
 }
 
+/* ---------- Multiplayer: two boards on one screen ---------- */
+const mpEls = [new Map(), new Map()];
+const newMp = m => ({ mp: true, players: [newGame(m), newGame(m)], result: null });
+const topTwo = g => g.tiles.map(t => t.v).sort((a, b) => b - a).concat([0, 0]).slice(0, 2);
+function coopWin(G) {
+  const [P, Q] = G.players.map(topTwo);
+  const A = (x, y) => x[0] >= 2048 && y[0] >= 1024 && y[1] >= 512;
+  const B = (x, y) => x[0] >= 2048 && x[1] >= 1024 && y[0] >= 1024;
+  return A(P, Q) || A(Q, P) || B(P, Q) || B(Q, P);
+}
+function mpResult(G, m) {
+  const [p1, p2] = G.players;
+  if (m.mpKind === "vs") {
+    const hit = G.players.findIndex(g => g.tiles.some(t => t.v >= 2048));
+    if (hit >= 0) return { winner: hit, why: `Player ${hit + 1} made 2048!` };
+    if (p1.over && p2.over) {
+      const [t1, t2] = [topTwo(p1)[0], topTwo(p2)[0]];
+      const w = t1 !== t2 ? (t1 > t2 ? 0 : 1) : p1.score !== p2.score ? (p1.score > p2.score ? 0 : 1) : -1;
+      return { winner: w, why: w < 0 ? "Both boards are full, and it's a tie." : `Both boards are full. Player ${w + 1} wins with the higher ${t1 !== t2 ? "top tile" : "score"}.` };
+    }
+    return null;
+  }
+  if (coopWin(G)) return { team: true, why: "Team goal reached. You both win!" };
+  if (p1.over && p2.over) return { team: false, why: "Both boards are full. The team goal wasn't reached." };
+  return null;
+}
+function movePlayer(i, dir) {
+  const m = M(), G = games[mode];
+  if (!m.mp || !G || G.result) return;
+  const g = G.players[i];
+  if (g.over) return;
+  const res = slide(g, m, dir);
+  if (!res.moved) return;
+  g.tiles = res.tiles; g.score += Math.round(res.gained); g.moves++;
+  spawn(g, m);
+  if (!canMove(g, m)) g.over = true;
+  G.result = mpResult(G, m);
+  const s = stats[mode], total = m.mpKind === "vs" ? Math.max(G.players[0].score, G.players[1].score) : G.players[0].score + G.players[1].score;
+  if (total > s.best) s.best = total;
+  if (G.result) {
+    s.played++;
+    if (G.result.team || G.result.winner >= 0) s.wins++;
+    s.history.unshift({ score: total, tile: Math.max(...G.players.map(x => topTwo(x)[0])), tk: null, moves: G.players[0].moves + G.players[1].moves,
+      at: Date.now(), result: G.result.team || G.result.winner >= 0 ? "won" : "over",
+      note: m.mpKind === "vs" ? (G.result.winner >= 0 ? `Player ${G.result.winner + 1} won` : "Tie") : G.result.team ? "Team win" : "Team lost" });
+    s.history = s.history.slice(0, 10);
+    G.result.team === false || (m.mpKind === "vs" && G.result.winner < 0) ? sfx.over() : sfx.win();
+  } else if (res.merges.length) sfx.merge(Math.max(...res.merges.map(t => t.v)), m);
+  else sfx.slide();
+  drawTiles($("mpTiles" + i), mpEls[i], g, m, res.dying);
+  renderMp();
+  save();
+}
+function renderMp(dying, instant) {
+  const m = M(), G = games[mode];
+  G.players.forEach((g, i) => {
+    if (instant) { mpEls[i].forEach(el => el.remove()); mpEls[i].clear(); $("mpTiles" + i).innerHTML = ""; }
+    drawTiles($("mpTiles" + i), mpEls[i], g, m, [], instant);
+    const [a, b] = topTwo(g);
+    $("mpScore" + i).textContent = `${g.score.toLocaleString()} pts · top ${a.toLocaleString()}${b ? ", " + b.toLocaleString() : ""}`;
+    const out = $("mpOut" + i);
+    const won = G.result && (G.result.team || G.result.winner === i);
+    out.hidden = !(g.over || G.result);
+    out.textContent = G.result ? (G.result.team ? "Team win!" : G.result.winner === i ? "Winner!" : G.result.team === false ? "Game over" : G.result.winner < 0 ? "Tie" : "") : g.over ? "No moves left" : "";
+    if (!out.textContent) out.hidden = true;
+    $("mpP" + i).classList.toggle("win", !!won);
+  });
+  $("mpStatus").innerHTML = G.result ? `<b>${G.result.why}</b> Press New game to play again.`
+    : m.mpKind === "vs" ? "First to make a 2048 wins. If a board fills up, that player is out."
+    : "Team goal: one board has 2048 and the other has 1024 and 512, or one board has 2048 and 1024 and the other has 1024.";
+  const g0 = G.players[0], g1 = G.players[1];
+  $("score").textContent = (m.mpKind === "vs" ? `${g0.score.toLocaleString()} – ${g1.score.toLocaleString()}` : (g0.score + g1.score).toLocaleString());
+  $("best").textContent = stats[mode].best.toLocaleString();
+  overlay.hidden = true;
+  renderStats();
+}
 function setDims(m, w, h) {
   m.cols = w; m.rows = h;
   const goal = 2 ** Math.max(3, Math.round(7 + (w * h - 9) * 4 / 7));
@@ -2340,8 +2748,25 @@ function setDims(m, w, h) {
 const dynGoal = (w, h) => 2 ** Math.max(3, Math.round(7 + (w * h - 9) * 4 / 7));
 function setupBoard() {
   const m = M(), g = games[mode];
+  $("mp").hidden = !m.mp;
+  board.hidden = !!m.mp;
+  document.querySelector(".ladder").hidden = !!m.mp;
+  if (m.mp) {
+    $("dims").hidden = true; $("dpad").hidden = true; $("arcadeHud").hidden = true;
+    const ARROW = { up: "↑", left: "←", right: "→", down: "↓" };
+    [0, 1].forEach(i => {
+      const pad = $("mpPad" + i);
+      pad.innerHTML = ["", "up", "", "left", "", "right", "", "down", ""].map(d => d ? `<button id="mp${i}-${d}" data-dir="${d}" aria-label="Player ${i + 1} ${d}">${ARROW[d]}</button>` : "<span></span>").join("");
+      pad.querySelectorAll("button").forEach(b => b.addEventListener("click", () => movePlayer(i, b.dataset.dir)));
+    });
+    renderModeInfo();
+    renderMp([], true);
+    if (!$("saves").hidden) renderSaves();
+    return;
+  }
   if (m.arcade && g.arcade) configureArcade(g.arcade);
   if (m.arcade2 && g.arcade2) configureArcade2(g.arcade2);
+  if (m.test && g.testRun) configureTest(g.testRun);
   if (m.dyn) setDims(m, g.w || 4, g.h || 4);
   applyOverride(m);
   const big = Math.max(m.rows, m.cols);
@@ -2390,7 +2815,7 @@ function renderModeInfo() {
     : m.need === "all" ? `Slide and merge tiles. Make both a ${gl[0]} and a ${gl[1]}.`
     : m.goals.length > 1 ? `Slide and merge tiles. Make ${gl.slice(0, -1).map(x => "a " + x).join(", ")} or a ${gl[gl.length - 1]}.`
     : `Slide and merge tiles to reach ${m.label}.`;
-  $("modeBtnGoal").textContent = m.arcade ? "Arcade" : m.arcade2 ? "Arcade 2" : m.label;
+  $("modeBtnGoal").textContent = m.arcade ? "Arcade" : m.arcade2 ? "Arcade 2" : m.test ? "Test" : m.label;
   $("modeBtnName").textContent = `${m.name} · ${dimsOf(m)}`;
   $("ruleText").textContent = m.rule;
   $("examples").innerHTML = m.examples.map(([ins, out]) => {
@@ -2414,6 +2839,8 @@ function renderModeInfo() {
 
 function renderArcadeHud(g, m) {
   const el = $("arcadeHud");
+  renderUndo(g, m);
+  if (m.test && g.testRun) { renderTestHud(g); return; }
   if (m.arcade2 && g.arcade2) { renderArcade2Hud(g); return; }
   if (!m.arcade || !g.arcade) { el.hidden = true; return; }
   const run = g.arcade;
@@ -2505,6 +2932,7 @@ function renderOverlay() {
   const m = M(), g = games[mode];
   if (m.arcade && g.arcade) { renderArcadeOverlay(g); return; }
   if (m.arcade2 && g.arcade2) { renderArcade2Overlay(g); return; }
+  if (m.test && g.testRun) { renderTestOverlay(g); return; }
   if (g.won && !g.keepGoing && !g.over) {
     const head = m.count ? (m.winText || `You made ${m.count} tiles of ${m.top.toLocaleString()}+`)
       : m.need === "all" ? `You made ${m.goals.map(x => x.toLocaleString()).join(" and ")}`
@@ -2568,7 +2996,7 @@ function chip(v, m, k) {
 
 function renderStats() {
   let lastGroup = "";
-  $("statsBody").innerHTML = MODES.map(m => {
+  $("statsBody").innerHTML = MODES.filter(m => !m.hidden).map(m => {
     const s = stats[m.id];
     const head = m.group !== lastGroup ? `<tr class="group"><th colspan="5">${m.group}</th></tr>` : "";
     lastGroup = m.group;
@@ -2589,23 +3017,23 @@ function renderStats() {
 }
 
 function renderPicker() {
-  const groups = [...new Set(MODES.map(m => m.group))];
+  const groups = [...new Set(MODES.filter(m => !m.hidden).map(m => m.group))];
   $("picker").innerHTML = groups.map(gname => `<div class="pgroup"><div class="eyebrow">${gname}</div><div class="pgrid">` +
-    MODES.filter(m => m.group === gname).map(m => {
+    MODES.filter(m => m.group === gname && !m.hidden).map(m => {
       const best = stats[m.id].best;
       return `<button class="pick" id="pick-${m.id}" data-mode="${m.id}" aria-pressed="${m.id === mode}">
         <b class="${m.goals.length > 1 || m.arcade || m.arcade2 ? "long" : ""}" style="color:${m.arcade || m.arcade2 ? "var(--accent)" : pickColor(m)}">${m.arcade ? "Arcade" : m.arcade2 ? "Arcade 2" : m.label}</b>
         <span class="nm">${m.name}</span>
-        <span class="meta">${m.arcade ? "12 stages + boss" : m.arcade2 ? "4 difficulties" : m.dyn ? "any size" : dimsOf(m)}${m.goalTag ? " · " + m.goalTag.toLowerCase() : ""}${best ? " · best " + best.toLocaleString() : ""}</span></button>`;
+        <span class="meta">${m.mp ? "2 players · 4×4" : m.arcade ? "12 stages + boss" : m.arcade2 ? "4 difficulties" : m.dyn ? "any size" : dimsOf(m)}${m.goalTag ? " · " + m.goalTag.toLowerCase() : ""}${best ? " · best " + best.toLocaleString() : ""}</span></button>`;
     }).join("") + `</div></div>`).join("");
   $("picker").querySelectorAll(".pick").forEach(b => b.addEventListener("click", () => { setMode(b.dataset.mode); openPanel(null); board.focus(); }));
 }
 
 function renderSaves() {
   const g = games[mode];
-  const arc = !!(M().arcade || M().arcade2);
+  const arc = !!(M().arcade || M().arcade2 || M().mp || M().test);
   ["copyCur", "saveCur"].forEach(id => $(id).disabled = arc);
-  if (arc) { $("curCode").value = ""; $("curInfo").textContent = "Save codes aren't available in Arcade modes."; $("prevBlock").hidden = true; return; }
+  if (arc) { $("curCode").value = ""; $("curInfo").textContent = M().mp ? "Save codes aren't available in multiplayer modes." : "Save codes aren't available in Arcade modes."; $("prevBlock").hidden = true; return; }
   $("curCode").value = encode(mode, g);
   $("curInfo").textContent = describe(mode, g);
   const p = prev[mode];
@@ -2613,7 +3041,7 @@ function renderSaves() {
   if (p) { $("prevCode").value = encode(mode, p); $("prevInfo").textContent = describe(mode, p); }
 }
 
-const PANELS = { picker: "modeBtn", settings: "settingsBtn", saves: "savesBtn", debugPanel: "debugBtn" };
+const PANELS = { picker: "modeBtn", settings: "settingsBtn", saves: "savesBtn", debugPanel: "debugBtn", learn: "learnBtn" };
 function openPanel(name) {
   Object.entries(PANELS).forEach(([p, btn]) => {
     const open = p === name;
@@ -2624,6 +3052,7 @@ function openPanel(name) {
   if (name === "picker") renderPicker();
   if (name === "saves") { renderSaves(); setStatus(""); }
   if (name === "debugPanel") { fillDebug(); $("dbgStatus").textContent = ""; }
+  if (name === "learn") renderLearn();
 }
 const togglePanel = name => openPanel($(name).hidden ? name : null);
 
@@ -2642,18 +3071,27 @@ function setStatus(text, kind) {
 
 /* ---------- actions ---------- */
 function save() {
-  store.set(KEY_GAME(mode), packGame(games[mode]));
+  store.set(KEY_GAME(mode), packAny(games[mode]));
   store.set(KEY_STATS, stats);
   store.set(KEY_MODE, mode);
 }
 function stashPrev(id, g) {
-  if (!g || g.moves === 0 || g.arcade || g.arcade2) return;
+  if (!g || g.mp || g.testRun || g.moves === 0 || g.arcade || g.arcade2) return;
   prev[id] = g;
   store.set(KEY_PREV(id), packGame(g));
 }
 
 function startNew(force) {
   const g = games[mode], btn = $("newGame");
+  if (M().test && g.testRun) { startTest(g.testRun.n); return; }
+  if (M().mp) {
+    const live = !g.result && g.players.some(x => x.moves > 0);
+    if (live && !force && !confirmTimer) { btn.textContent = "Tap again to restart"; btn.classList.add("warn"); confirmTimer = setTimeout(clearConfirm, 3000); return; }
+    clearConfirm();
+    games[mode] = newMp(M());
+    setupBoard(); save();
+    return;
+  }
   if (M().arcade2 && g.arcade2) {
     const r2 = g.arcade2, live = ["play", "failed", "clear"].includes(r2.phase) && (r2.stage > 1 || r2.finale || g.moves > 0);
     if (live && !force && !confirmTimer) { btn.textContent = "Tap again to restart"; btn.classList.add("warn"); confirmTimer = setTimeout(clearConfirm, 3000); return; }
@@ -2717,10 +3155,18 @@ function loadGame(id, g, msg) {
   setStatus(msg, "ok");
 }
 
+const packAny = g => g && g.mp ? { mp: true, players: g.players.map(packGame), result: g.result } : packGame(g);
+function hydrateAny(saved, m) {
+  if (!m.mp) return hydrate(saved, m);
+  if (!saved || !saved.mp || !Array.isArray(saved.players)) return null;
+  const players = saved.players.map(p => hydrate(p, m));
+  return players.length === 2 && players.every(Boolean) ? { mp: true, players, result: saved.result || null } : null;
+}
 function hydrate(saved, m) {
   if (!saved || !Array.isArray(saved.tiles)) return null;
   if (m.arcade) { if (!saved.arcade || !Array.isArray(saved.arcade.plan)) return null; configureArcade(saved.arcade); }
   if (m.arcade2) { if (!saved.arcade2 || !ARC2_DIFFS[saved.arcade2.diff]) return null; configureArcade2(saved.arcade2); }
+  if (m.test) { if (!saved.testRun || !TESTS[saved.testRun.n - 1]) return null; configureTest(saved.testRun); }
   const H = m.dyn ? saved.h || 4 : m.rows, W = m.dyn ? saved.w || 4 : m.cols;
   if (saved.tiles.some(t => t.r >= H || t.c >= W)) return null;
   const g = { made: [], bigs: [], ...saved, tiles: saved.tiles.map(t => { const x = { id: nextId++, v: t.v, r: t.r, c: t.c, born: t.b ?? saved.moves ?? 0 }; if (t.k) x.k = t.k; return x; }) };
@@ -2775,9 +3221,9 @@ function renderKeys() {
 function fillDebug() {
   const m = M();
   $("dbgMode").textContent = m.arcade ? "Arcade" : `${m.name} (${m.label})`;
-  const off = !!(m.arcade || m.arcade2);
+  const off = !!(m.arcade || m.arcade2 || m.mp || m.test);
   ["dbgW", "dbgH", "dbgGoals", "dbgNeed", "dbgRungs", "dbgSpawn", "dbgApply", "dbgReset"].forEach(id => $(id).disabled = off);
-  if (off) { $("dbgStatus").textContent = "Arcade stages can't be changed in debug mode."; return; }
+  if (off) { $("dbgStatus").textContent = m.mp ? "Multiplayer modes can't be changed in debug mode." : "Arcade stages can't be changed in debug mode."; return; }
   $("dbgWH").style.opacity = m.dyn ? 0.5 : 1;
   $("dbgW").disabled = $("dbgH").disabled = !!m.dyn;
   $("dbgW").value = m.cols; $("dbgH").value = m.rows;
@@ -2820,7 +3266,7 @@ function start(hot) {
   const savedStats = hot.stats || store.get(KEY_STATS) || {};
   MODES.forEach(m => {
     stats[m.id] = Object.assign(blankStats(), savedStats[m.id] || {});
-    const g = hydrate(hot.games ? hot.games[m.id] : store.get(KEY_GAME(m.id)), m);
+    const g = hydrateAny(hot.games ? hot.games[m.id] : store.get(KEY_GAME(m.id)), m);
     if (g) games[m.id] = g;
     const p = hydrate(hot.prev ? hot.prev[m.id] : store.get(KEY_PREV(m.id)), m);
     if (p) prev[m.id] = p;
@@ -2882,11 +3328,15 @@ function start(hot) {
   $("debugRow").hidden = !debugMode;
   $("debugBtn").hidden = !debugMode;
   $("debugBtn").addEventListener("click", () => togglePanel("debugPanel"));
+  $("learnBtn").addEventListener("click", () => togglePanel("learn"));
+  $("undoBtn").addEventListener("click", () => jumpTo(games[mode].tpos - 1));
+  $("redoBtn").addEventListener("click", () => jumpTo(games[mode].tpos + 1));
+  $("undoRange").addEventListener("input", e => jumpTo(+e.target.value));
   renderKeys();
   $("keysReset").addEventListener("click", () => { settings.keys = { ...DEFAULT_KEYS }; capturing = null; saveSettings(); renderKeys(); });
   $("dbgApply").addEventListener("click", () => {
     const m = M();
-    if (m.arcade || m.arcade2) return;
+    if (m.arcade || m.arcade2 || m.mp) return;
     try {
       overrides[m.id] = readDebug(m);
       store.set(KEY_OVR, overrides);
@@ -2899,7 +3349,7 @@ function start(hot) {
   });
   $("dbgReset").addEventListener("click", () => {
     const m = M();
-    if (m.arcade || m.arcade2) return;
+    if (m.arcade || m.arcade2 || m.mp) return;
     delete overrides[m.id];
     store.set(KEY_OVR, overrides);
     restoreDefaults(m);
@@ -2976,8 +3426,22 @@ function start(hot) {
       renderKeys();
       return;
     }
+    const tagU = e.target && e.target.tagName;
+    if (M().undo && tagU !== "INPUT" && tagU !== "TEXTAREA") {
+      const k = e.key.toLowerCase(), mod = e.metaKey || e.ctrlKey;
+      if ((mod && k === "z" && !e.shiftKey) || (!mod && k === "u")) { e.preventDefault(); jumpTo(games[mode].tpos - 1); return; }
+      if ((mod && (k === "y" || (k === "z" && e.shiftKey))) || (!mod && k === "r")) { e.preventDefault(); jumpTo(games[mode].tpos + 1); return; }
+    }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === "Escape") { openPanel(null); return; }
+    if (M().mp) {
+      const tg = e.target && e.target.tagName;
+      if (tg === "TEXTAREA" || tg === "INPUT" || tg === "SELECT") return;
+      const p1 = { w: "up", a: "left", s: "down", d: "right" }[normKey(e.key)];
+      const p2 = { ArrowUp: "up", ArrowLeft: "left", ArrowDown: "down", ArrowRight: "right" }[e.key];
+      if (p1 || p2) { e.preventDefault(); movePlayer(p1 ? 0 : 1, p1 || p2); }
+      return;
+    }
     const tag = e.target && e.target.tagName;
     if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
     let d = keyToDir(e.key);
@@ -3004,7 +3468,7 @@ function start(hot) {
   });
   board.addEventListener("pointercancel", () => { tracking = false; });
 
-  const pack = obj => Object.fromEntries(Object.entries(obj).map(([id, g]) => [id, packGame(g)]));
+  const pack = obj => Object.fromEntries(Object.entries(obj).map(([id, g]) => [id, packAny(g)]));
   window.claude?.hot?.snapshot?.(() => ({ mode, stats, games: pack(games), prev: pack(prev) }));
 
   Promise.resolve(window.claude?.use?.("downloads")).then(d => {
@@ -3016,8 +3480,8 @@ function start(hot) {
 }
 
 // exposed for a quick logic check outside the browser
-if (typeof window.__test2048 === "object") Object.assign(window.__test2048, { MODES, slide, encode, decode, newGame, checkWin, planRun, configureArcade, ARCADE, BY_ID, ARC2_FINALES, ARC2_DIFFS, configureArcade2, pickStage2, arc2Par, ARCADE2, debugProgress, debugState, isDebug: () => debugMode });
-else window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+if (typeof window.__test2048 === "object") Object.assign(window.__test2048, { MODES, slide, encode, decode, newGame, checkWin, planRun, configureArcade, ARCADE, BY_ID, ARC2_FINALES, ARC2_DIFFS, configureArcade2, pickStage2, arc2Par, ARCADE2, debugProgress, debugState, isDebug: () => debugMode, TESTS, startTest, jumpTo, games: () => games });
+if (typeof window.__test2048 !== "object" || window.__test2048.browser) window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
 })();
 </script>
 
