@@ -2,7 +2,7 @@
 <title>2048</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@400&family=Nunito:wght@400;600;800;900&family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Newsreader:opsz,wght@6..72,400;6..72,600&family=Space+Mono:wght@400;700&family=Space+Grotesk:wght@400;500;600&display=swap">
 <style>
 /* Layout: board-first game column beside a quiet stats rail; rail drops below the board on phones. */
 :root {
@@ -37,6 +37,12 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
+:root[data-font="rounded"] { --display: "Nunito", "Avenir Next", system-ui, sans-serif; --body: "Nunito", system-ui, sans-serif; --fw: 0.95; }
+:root[data-font="serif"] { --display: "Fraunces", Georgia, "Times New Roman", serif; --body: "Newsreader", Georgia, serif; --fw: 0.95; }
+:root[data-font="mono"] { --display: "Space Mono", ui-monospace, Consolas, monospace; --body: "Space Grotesk", system-ui, sans-serif; --mono: "Space Mono", ui-monospace, monospace; --fw: 0.82; }
+:root[data-font="rounded"] body { font-size: 15.5px; }
+:root[data-font="serif"] body { font-size: 16.5px; }
+.font-sample { font-family: var(--display); font-weight: 800; }
 body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.45; padding-inline: 16px; padding-block: 24px 40px; }
 .wrap { max-width: 1000px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 500px) minmax(0, 1fr); gap: 32px; align-items: start; }
 @media (max-width: 840px) { .wrap { grid-template-columns: minmax(0, 1fr); max-width: 500px; } }
@@ -155,6 +161,25 @@ input[type="number"] { width: 4.5em; font-variant-numeric: tabular-nums; }
 .quiz { display: grid; gap: 8px; border: 1px solid var(--line); border-radius: 12px; padding: 12px; background: var(--bg); }
 .quiz .opts { display: grid; gap: 6px; }
 .quiz .opts button { text-align: left; }
+.ach-sum { display: flex; flex-wrap: wrap; gap: 8px; }
+.ach-sum > span { font-size: 13px; font-weight: 600; border-radius: 99px; padding: 4px 10px; background: var(--bg); border: 1px solid var(--line); }
+.ach-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 8px; max-height: 480px; overflow: auto; padding-right: 4px; }
+.ach { display: grid; grid-template-columns: 34px 1fr; gap: 4px 10px; align-items: start; border: 1px solid var(--line); background: var(--bg); border-radius: 12px; padding: 10px; }
+.ach.locked { opacity: 0.62; }
+.ach .medal { grid-row: span 3; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 800; color: #1c262d; background: var(--rc); box-shadow: inset 0 -3px 0 rgba(0,0,0,0.18); }
+.ach.locked .medal { background: var(--cell); color: var(--muted); box-shadow: none; }
+.ach b { font-size: 14px; }
+.ach .ad { font-size: 12.5px; color: var(--muted); }
+.ach .rt { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--rt); }
+.ach .bar { height: 5px; border-radius: 99px; background: var(--cell); overflow: hidden; }
+.ach .bar i { display: block; height: 100%; background: var(--rc); }
+:root { --r-bronze: #cd8a4f; --r-silver: #b8c2cc; --r-gold: #e8b923; --r-plat: #8fd3e8; }
+.r-bronze { --rc: var(--r-bronze); --rt: #a5652d; } .r-silver { --rc: var(--r-silver); --rt: #6c7a87; }
+.r-gold { --rc: var(--r-gold); --rt: #a77e00; } .r-plat { --rc: var(--r-plat); --rt: #2a8aa8; }
+.toast-wrap { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); z-index: 50; display: grid; gap: 8px; justify-items: center; width: max-content; max-width: calc(100vw - 32px); pointer-events: none; }
+.toast { display: flex; align-items: center; gap: 10px; background: var(--board); color: #fff; border-radius: 12px; padding: 10px 14px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); font-size: 14px; max-width: calc(100vw - 32px); animation: toastIn 300ms ease-out; }
+.toast .medal { width: 26px; height: 26px; border-radius: 50%; background: var(--rc); flex: none; }
+@keyframes toastIn { from { opacity: 0; transform: translateY(12px); } }
 .undo-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px; }
 .undo-bar input[type="range"] { flex: 1 1 160px; width: auto; }
 .undo-bar span { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -295,6 +320,7 @@ tr.group th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-tr
         <span class="caret" id="modeBtnCaret">Change mode</span>
       </button>
       <button class="btn ghost" id="savesBtn" aria-expanded="false" aria-controls="saves">Save code</button>
+      <button class="btn ghost" id="achBtn" aria-expanded="false" aria-controls="ach">Achievements</button>
       <button class="btn ghost" id="learnBtn" aria-expanded="false" aria-controls="learn">Learn</button>
       <button class="btn ghost" id="settingsBtn" aria-expanded="false" aria-controls="settings">Settings</button>
       <button class="btn ghost" id="debugBtn" aria-expanded="false" aria-controls="debugPanel" hidden>Debug</button>
@@ -302,6 +328,10 @@ tr.group th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-tr
     </div>
 
     <div class="panel-box" id="picker" hidden></div>
+
+    <div class="panel-box" id="ach" hidden>
+      <div id="achBody" class="lesson"></div>
+    </div>
 
     <div class="panel-box" id="learn" hidden>
       <div class="learn-tabs" role="tablist" id="learnTabs"></div>
@@ -326,6 +356,16 @@ tr.group th { text-align: left; font-size: 11px; letter-spacing: 0.08em; text-tr
           <option value="chimes">Chimes</option>
           <option value="wood">Wood blocks</option>
           <option value="bubbles">Bubbles</option>
+          <option value="synth">Synthwave</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label for="fontSet">Font<span class="sub">Tiles, numbers and text</span></label>
+        <select id="fontSet">
+          <option value="classic">Classic (Bricolage)</option>
+          <option value="rounded">Rounded (Nunito)</option>
+          <option value="serif">Serif (Fraunces)</option>
+          <option value="mono">Monospace (Space Mono)</option>
         </select>
       </div>
       <div class="setting" id="debugRow" hidden>
@@ -812,6 +852,26 @@ const afterTrigat = (g, merges) => {
   merges.forEach(t => { if (isTri(t.v)) { g.x.count++; if (!g.x.tri.includes(t.v)) g.x.tri.push(t.v); } });
   return {};
 };
+// PENGAT: a tile s merges with its pentagonal number s(3s − 1)/2 (s may be a fraction), scaled by any whole n.
+// For lo ≤ hi that means n = 3·lo² / (2·hi + lo) is a whole number.
+const okPengat = ([a, b]) => { const [lo, hi] = lohi2(a, b); return Number.isInteger(3 * lo * lo / (2 * hi + lo)); };
+const isPent = n => { const k = (1 + Math.sqrt(1 + 24 * n)) / 6; return n > 0 && Math.abs(k - Math.round(k)) < 1e-9; };
+const PENGAT_LADDER = [70, 210, 330, 715, 1080, 1520, 1820, 2035, 2380, 2625, 3290, 4030, 4510, 4845, 5735, 6700, 7315, 7740, 8400, 8855, 10045, 10795, 11310, 12650];
+const afterPengat = (g, merges) => {
+  g.x = g.x || { pen: [], count: 0 };
+  merges.forEach(t => { if (isPent(t.v)) { g.x.count++; if (!g.x.pen.includes(t.v)) g.x.pen.push(t.v); } });
+  return {};
+};
+// SQUART: a tile s merges with its square s² (s may be a fraction), scaled by any whole n: for lo ≤ hi, hi divides lo².
+// Three-tile SQUART: the middle tile must SQUART-merge with both of the others.
+const okSquartPair = (a, b) => { const [lo, hi] = lohi2(a, b); return Number.isInteger(lo) && Number.isInteger(hi) && (lo * lo) % hi === 0; };
+const okSquart3 = vals => { if (vals.length !== 3) return false; const [x, y, z] = asc(vals); return okSquartPair(x, y) && okSquartPair(y, z); };
+const SQUART_LADDER = Array.from({ length: 20 }, (_, i) => (3 * (2 * i + 1)) ** 2);
+const afterSquart = (g, merges) => {
+  g.x = g.x || { sq: [], count: 0 };
+  merges.forEach(t => { if (t.v > 1 && isSquare(t.v)) { g.x.count++; if (!g.x.sq.includes(t.v)) g.x.sq.push(t.v); } });
+  return {};
+};
 // 3120 Fibonorial: a tile carries k = "N,prev,c". With c < N it merges with a tile equal to prev (Fibonacci step);
 // once c reaches N it must merge with an equal tile, which raises N by 1.
 const fibParse = k => String(k || "0,0,0").split(",").map(Number);
@@ -1017,6 +1077,9 @@ const MODES = [
   p2Mode("4096", "Harder", 4096, 4),
   p2Mode("hs-2048", "Harder spawning", 2048, 4, { spawn: [[2, 70], [4, 10], [8, 10], [16, 10]],
     rule: p2Rule + " New tiles are often 8s and 16s, which clutter the board." }),
+  p2Mode("fast-2048", "Faster", 2048, 4, { chain: true,
+    rule: "Two equal tiles merge into their sum, and a tile that was just merged can merge again on the same move. So 2 2 4 slid left becomes one 8, and 2 2 2 2 becomes one 8 too.",
+    examples: [[[2, 2], 4], [[2, 2, 4], 8], [[2, 2, 2, 2], 8], [[8, 4, 2, 2], 16], [[2, 4], 0]] }),
   p2Mode("undo-2048", "Undo", 2048, 4, { undo: true,
     rule: p2Rule + " You can undo as many moves as you like with the Undo button, Ctrl+Z or U, redo them with Redo, Ctrl+Y or R, or drag the timeline to jump to any earlier move. Making a new move from an earlier point replaces the moves after it." }),
   p2Mode("tr-4096", "4096 trainer", 4096, 4, { firstSpawns: [2048],
@@ -1653,6 +1716,26 @@ const MODES = [
     ladderNote: g => { const x = g.x || { tri: [], count: 0 }; return `${x.tri.length} different, ${x.count} total`; },
     rule: "Two equal tiles merge. A bigger tile also merges with a smaller one when the smaller tile is a multiple of (2 × their ratio − 1). For 30 and 12, the ratio is 5/2, so 2 × 5/2 − 1 = 4, and 12 is a multiple of 4. Put another way, a tile merges with its triangular multiples, even fractional ones, and any valid merge still works when both tiles are multiplied by the same number. Only 3s spawn. There's no goal; for a side challenge, see how many triangular numbers you can make.",
     examples: [[[3, 3], 6], [[6, 3], 9], [[9, 6], 15], [[18, 12], 30], [[30, 12], 42], [[45, 9], 54], [[9, 3], 0]] },
+  { id: "pengat", group: "Endless", name: "PENGAT", family: "Pentagonal ratios", goals: [1000], label: "PENGAT", size: 4, endless: true,
+    spawn: [[5, 100]], maxK: 2, ok: okPengat, checkWin: () => false, afterMerge: afterPengat,
+    initX: () => ({ pen: [], count: 0 }),
+    cleanX: x => ({ pen: Array.isArray(x && x.pen) ? x.pen.filter(v => Number.isInteger(v) && isPent(v)) : [], count: x && Number.isInteger(x.count) ? x.count : 0 }),
+    tagline: "Endless. Make the biggest tile you can.",
+    ladder: PENGAT_LADDER, ladderTitle: "Pentagonal numbers made",
+    isHit: (v, g) => !!(g.x && g.x.pen.includes(v)),
+    ladderNote: g => { const x = g.x || { pen: [], count: 0 }; return `${x.pen.length} different, ${x.count} total`; },
+    rule: "Two equal tiles merge. A smaller tile also merges with its pentagonal number, s × (3s − 1) ÷ 2, even when s is a fraction, and any valid merge still works with both tiles multiplied by the same whole number. In practice, a bigger tile merges with a smaller one when the smaller tile is a whole multiple of (2 × their ratio + 1) ÷ 3. For 10 and 5 the ratio is 2, so (2 × 2 + 1) ÷ 3 = 5/3, and 5 is 3 × 5/3. Only 5s spawn. There's no goal; for a side challenge, see how many pentagonal numbers you can make.",
+    examples: [[[5, 5], 10], [[10, 5], 15], [[20, 10], 30], [[50, 20], 70], [[15, 5], 0], [[10, 15], 0]] },
+  { id: "squart3", group: "Endless", name: "Three-tile SQUART", family: "Square ratios, three at a time", goals: [1000], label: "SQUART", size: 5, endless: true,
+    spawn: [[1, 100]], maxK: 3, ok: okSquart3, checkWin: () => false, afterMerge: afterSquart,
+    initX: () => ({ sq: [], count: 0 }),
+    cleanX: x => ({ sq: Array.isArray(x && x.sq) ? x.sq.filter(v => Number.isInteger(v) && v > 1 && isSquare(v)) : [], count: x && Number.isInteger(x.count) ? x.count : 0 }),
+    tagline: "Endless. Make the biggest tile you can.",
+    ladder: SQUART_LADDER, ladderTitle: "Squares made",
+    isHit: (v, g) => !!(g.x && g.x.sq.includes(v)),
+    ladderNote: g => { const x = g.x || { sq: [], count: 0 }; return `${x.sq.length} different, ${x.count} total`; },
+    rule: "In SQUART, a smaller tile merges with its square, even when it's a fraction, and any valid merge still works with both tiles multiplied by the same whole number. So two tiles pair up when the bigger one divides the smaller one squared: 12 and 18 pair, because 12 × 12 = 144 = 8 × 18. Here, three tiles merge when the middle-sized one pairs with both of the others. Pairs alone never merge. Only 1s spawn. There's no goal; for a side challenge, see how many squares you can make.",
+    examples: [[[1, 1, 1], 3], [[3, 3, 3], 9], [[3, 3, 9], 15], [[3, 9, 9], 21], [[9, 9, 27], 45], [[1, 1], 0], [[1, 3, 9], 0]] },
   { id: "scaprim", group: "Endless", name: "SCAPRIM", family: "Scaled primes", goals: [1000], label: "SCAPRIM", size: 4, endless: true,
     spawn: [[1, 100]], maxK: 2, ok: okScaprim, checkWin: () => false, afterMerge: afterComposite,
     initX: () => ({ made: [], count: 0 }),
@@ -1698,13 +1781,24 @@ const MODES = [
     tagline: `Make ${what} ${goal.toLocaleString()}.`,
     rule: base.rule + ` Harder goal: only ${what} ${goal.toLocaleString()} wins; going past it doesn't count.` });
 });
+// Spawn-only variants of existing modes, placed right after their base mode.
+[["b3-2187", "s1-2187", "Same-tile spawning", [[1, 100]], " Only 1s spawn."],
+ ["b4-1024", "s1-1024", "Same-tile spawning", [[1, 100]], " Only 1s spawn."],
+ ["b5-3125", "s1-3125", "1-spawning", [[1, 100]], " Only 1s spawn."],
+ ["trigat", "trigat-2", "2-spawning TRIGAT", [[3, 50], [2, 50]], " 3s and 2s spawn equally often."]].forEach(([baseId, id, name, spawn, note]) => {
+  const i = MODES.findIndex(m => m.id === baseId);
+  if (i < 0) return;
+  const base = MODES[i];
+  const rule = baseId === "trigat" ? base.rule.replace(" Only 3s spawn.", note) : base.rule + note;
+  MODES.splice(i + 1, 0, { ...base, id, name, spawn, rule, family: baseId === "trigat" ? "Triangular ratios, 2s and 3s" : base.family });
+});
 MODES.forEach(m => {
   m.rows = m.rows || m.size;
   m.cols = m.cols || m.size;
   m.need = m.need || "any";
   m.top = Math.max(...m.goals);
   m.label = m.label || m.goals.map(g => g.toLocaleString()).join(m.need === "all" ? " + " : " / ");
-  m.labelHtml = m.count ? m.label : m.goals.map(g => g.toLocaleString()).join(`<span class="join">${m.need === "all" ? "+" : "/"}</span>`);
+  m.labelHtml = m.count || m.endless ? m.label : m.goals.map(g => g.toLocaleString()).join(`<span class="join">${m.need === "all" ? "+" : "/"}</span>`);
 });
 const BY_ID = Object.fromEntries(MODES.map(m => [m.id, m]));
 
@@ -1941,7 +2035,7 @@ const M = () => BY_ID[mode];
 const blankStats = () => ({ best: 0, bestTile: 0, bestTileK: null, played: 0, wins: 0, history: [] });
 
 /* ---------- sound ---------- */
-const settings = Object.assign({ sound: true, volume: 60, soundSet: "original" }, store.get(KEY_SET) || {});
+const settings = Object.assign({ sound: true, volume: 60, soundSet: "original", font: "classic" }, store.get(KEY_SET) || {});
 let actx = null;
 function audio() {
   if (!settings.sound || settings.volume <= 0) return null;
@@ -1951,18 +2045,25 @@ function audio() {
   } catch (e) { return null; }
   return actx;
 }
-function tone(freq, dur, { type = "sine", gain = 0.2, delay = 0, slideTo } = {}) {
+function tone(freq, dur, { type = "sine", gain = 0.2, delay = 0, slideTo, cutoff, detune = 0 } = {}) {
   const c = audio();
   if (!c) return;
   const t = c.currentTime + delay, vol = gain * (settings.volume / 100);
   const o = c.createOscillator(), g = c.createGain();
   o.type = type;
+  o.detune.value = detune;
   o.frequency.setValueAtTime(freq, t);
   if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, t + dur);
   g.gain.setValueAtTime(0.0001, t);
   g.gain.exponentialRampToValueAtTime(Math.max(vol, 0.0002), t + 0.012);
   g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
-  o.connect(g).connect(c.destination);
+  if (cutoff) {
+    const f = c.createBiquadFilter();
+    f.type = "lowpass"; f.Q.value = 6;
+    f.frequency.setValueAtTime(cutoff, t);
+    f.frequency.exponentialRampToValueAtTime(Math.max(120, cutoff / 5), t + dur);
+    o.connect(f).connect(g).connect(c.destination);
+  } else o.connect(g).connect(c.destination);
   o.start(t); o.stop(t + dur + 0.03);
 }
 const PENTA = [0, 2, 4, 7, 9];
@@ -2001,8 +2102,21 @@ const SOUND_SETS = {
     bump: () => tone(200, 0.12, { gain: 0.06, slideTo: 120 }),
     win: () => [400, 500, 650, 850, 1100].forEach((f, i) => tone(f, 0.12, { gain: 0.14, delay: i * 0.08, slideTo: f * 1.6 })),
     over: () => [600, 450, 300].forEach((f, i) => tone(f, 0.2, { gain: 0.12, delay: i * 0.15, slideTo: f * 0.6 }))
+  },
+  synth: {
+    slide: () => tone(110, 0.09, { type: "sawtooth", gain: 0.035, cutoff: 900 }),
+    merge: f => [-9, 9].forEach(dt => { tone(f / 2, 0.32, { type: "sawtooth", gain: 0.07, cutoff: f * 6, detune: dt }); tone(f * 1.5, 0.22, { type: "sawtooth", gain: 0.03, cutoff: f * 5, detune: dt, delay: 0.05 }); }),
+    bump: () => tone(55, 0.25, { type: "sawtooth", gain: 0.09, cutoff: 400, slideTo: 41 }),
+    win: () => [262, 330, 392, 523, 659].forEach((f, i) => [-10, 10].forEach(dt => tone(f, 0.6, { type: "sawtooth", gain: 0.06, cutoff: 3200, detune: dt, delay: i * 0.12 }))),
+    over: () => [220, 175, 147, 110].forEach((f, i) => [-12, 12].forEach(dt => tone(f, 0.55, { type: "sawtooth", gain: 0.06, cutoff: 1400, detune: dt, delay: i * 0.2 })))
   }
 };
+function applyFont() {
+  const f = ["rounded", "serif", "mono"].includes(settings.font) ? settings.font : null;
+  if (f) document.documentElement.dataset.font = f; else delete document.documentElement.dataset.font;
+  if (typeof setupBoard === "function" && games && games[mode]) try { setupBoard(); } catch (e) {}
+}
+document.documentElement.dataset.font = ["rounded", "serif", "mono"].includes(settings.font) ? settings.font : "";
 const soundSet = () => SOUND_SETS[settings.soundSet] || SOUND_SETS.original;
 const sfx = {
   slide() { soundSet().slide(); },
@@ -2082,6 +2196,36 @@ function slide(g, m, dir, turn = g.moves + 1) {
   for (let line = 0; line < lines; line++) {
     const row = [];
     for (let k = 0; k < LINES[line].length; k++) { const [r, c] = cellAt(line, k); if (grid[r][c]) row.push(grid[r][c]); }
+    if (m.chain) {
+      // Faster: tiles stack up against the wall, and the top two keep merging while they can.
+      const stack = [];
+      row.forEach(t => {
+        stack.push({ v: t.v, k: t.k, src: [t], orig: t });
+        while (stack.length >= 2) {
+          const b = stack[stack.length - 1], a = stack[stack.length - 2];
+          const res = tryMerge(m, [{ v: a.v, k: a.k }, { v: b.v, k: b.k }], turn, g);
+          if (!res || res.destroy || res.rest) break;
+          stack.splice(-2, 2, { v: res.v, k: res.k, src: [...a.src, ...b.src], merged: true });
+          gained += Math.abs(res.v);
+        }
+      });
+      stack.forEach((e, slot) => {
+        const [r, c] = cellAt(line, slot);
+        if (e.merged) {
+          e.src.forEach(t => dying.push({ id: t.id, r, c }));
+          const t = { id: nextId++, v: e.v, r, c, merged: true, born: turn };
+          if (e.k) t.k = e.k;
+          tiles.push(t); merges.push(t); moved = true;
+        } else {
+          const a = e.orig;
+          if (a.r !== r || a.c !== c) moved = true;
+          const t = { id: a.id, v: a.v, r, c, born: a.born };
+          if (a.k) t.k = a.k;
+          tiles.push(t);
+        }
+      });
+      continue;
+    }
     let i = 0, slot = 0;
     while (i < row.length) {
       const [r, c] = cellAt(line, slot++);
@@ -2174,6 +2318,9 @@ function move(dir) {
   g.score += Math.round(res.gained);
   g.moves++;
   g.mergeCount = (g.mergeCount || 0) + res.merges.length;
+  if (!m.test) cnt.modes[mode] = 1;
+  cnt.moves++; cnt.merges += res.merges.length; cnt.score += Math.max(0, Math.round(res.gained)); cnt.bigMove = Math.max(cnt.bigMove, res.merges.length);
+  achSoon();
   const after = m.afterMerge ? m.afterMerge(g, res.merges) : {};
   if (after.lose) g.loseText = after.lose;
   if (!m.noSpawn) spawn(g, m);
@@ -2260,6 +2407,7 @@ function arcade2Fail(g) {
 }
 function recordRun2(g, result) {
   const run = g.arcade2, s = stats.arcade2, top = topT(g, ARCADE2);
+  if (result === "won") { cnt.arc2[run.diff] = 1; achSoon(); }
   s.played++;
   if (result === "won") s.wins++;
   if (run.tp > s.best) s.best = run.tp;
@@ -2281,6 +2429,168 @@ function nextArcade2Stage(run) {
   else if (run.tp >= ARC2_THRESH) run.finale = 1;
   else { run.stage++; run.current = pickStage2(run); }
   startArcade2Stage(run);
+}
+// ---------- Achievements ----------
+const KEY_ACH = "2048:ach", KEY_CNT = "2048:counters";
+const cnt = Object.assign({ moves: 0, merges: 0, score: 0, bigMove: 0, undos: 0, codes: 0, font: 0, arcStage: 0, modes: {}, tabs: {}, sounds: {}, arc2: {} }, store.get(KEY_CNT) || {});
+const achGot = store.get(KEY_ACH) || {};
+const RARITY = { bronze: ["Bronze", "r-bronze"], silver: ["Silver", "r-silver"], gold: ["Gold", "r-gold"], plat: ["Platinum", "r-plat"] };
+const visModes = () => MODES.filter(m => !m.hidden);
+const st = id => (stats && stats[id]) || blankStats();
+const tileIn = id => st(id).bestTile || 0, winsIn = id => st(id).wins || 0;
+const anyWin = ids => ids.some(id => winsIn(id) > 0) ? 1 : 0;
+const triedAny = ids => ids.some(id => cnt.modes[id]) ? 1 : 0;
+const ACTX = () => {
+  const vm = visModes(), done = testsDone(), T = k => TESTS.filter(t => (!k || t.kind === k) && done[t.n]).length;
+  return {
+    wins: vm.reduce((a, m) => a + winsIn(m.id), 0), modesWon: vm.filter(m => winsIn(m.id) > 0).length,
+    tried: vm.filter(m => cnt.modes[m.id]).length,
+    bestGame: Math.max(0, ...vm.filter(m => !m.arcade && !m.arcade2).map(m => st(m.id).best)),
+    endTile: Math.max(0, ...vm.filter(m => m.endless).map(m => tileIn(m.id))),
+    tests: T(), quiz: T("quiz"), puzzle: T("puzzle"), reach: T("reach"),
+    classic: TESTS.filter(t => t.n <= 30 && done[t.n]).length
+  };
+};
+const A = (r, name, desc, val, goal = 1) => ({ r, name, desc, val, goal });
+const ACHS = [
+  A("bronze", "First slide", "Make your first move.", c => cnt.moves),
+  A("bronze", "First merge", "Merge two tiles.", c => cnt.merges),
+  A("bronze", "Getting warm", "Make a 64 in Regular 2048.", c => tileIn("2048"), 64),
+  A("bronze", "Triple digits", "Make a 128 in Regular 2048.", c => tileIn("2048"), 128),
+  A("bronze", "Quarter way", "Make a 256 in Regular 2048.", c => tileIn("2048"), 256),
+  A("bronze", "Half way", "Make a 512 in Regular 2048.", c => tileIn("2048"), 512),
+  A("bronze", "Warm-up win", "Win Easier 1024.", c => winsIn("1024")),
+  A("bronze", "Tight squeeze", "Win Small board 128 on 3×3.", c => winsIn("3x3-128")),
+  A("bronze", "Hundred moves", "Make 100 moves in total.", c => cnt.moves, 100),
+  A("bronze", "Thousand moves", "Make 1,000 moves in total.", c => cnt.moves, 1000),
+  A("bronze", "Hundred merges", "Make 100 merges in total.", c => cnt.merges, 100),
+  A("bronze", "Four figures", "Score 1,000 in one game.", c => c.bestGame, 1000),
+  A("bronze", "Piggy bank", "Score 10,000 points in total.", c => cnt.score, 10000),
+  A("bronze", "Explorer", "Play 5 different modes.", c => c.tried, 5),
+  A("bronze", "Tourist", "Play 10 different modes.", c => c.tried, 10),
+  A("bronze", "First lesson", "Open the Learn panel.", c => Object.keys(cnt.tabs).length),
+  A("bronze", "Studious", "Read all five Learn tabs.", c => Object.keys(cnt.tabs).length, 5),
+  A("bronze", "Quiz whiz", "Pass a quiz test.", c => c.quiz),
+  A("bronze", "Puzzler", "Pass a puzzle test.", c => c.puzzle),
+  A("bronze", "Reaching out", "Pass a reach test.", c => c.reach),
+  A("bronze", "Test taker", "Pass 5 tests.", c => c.tests, 5),
+  A("bronze", "Rewind", "Undo a move in Undo 2048.", c => cnt.undos),
+  A("bronze", "Second thoughts", "Undo 25 moves.", c => cnt.undos, 25),
+  A("bronze", "New look", "Change the font.", c => cnt.font),
+  A("bronze", "Mixtape", "Try 3 sound styles.", c => Object.keys(cnt.sounds).length, 3),
+  A("bronze", "Safekeeping", "Copy or download a save code.", c => cnt.codes),
+  A("bronze", "Threes company", "Make an 81 in Powers of 3.", c => tileIn("b3-2187"), 81),
+  A("bronze", "Golden spiral", "Make an 89 in Fibonacci.", c => tileIn("fib-2584"), 89),
+  A("bronze", "Good neighbours", "Make a 64 in Neighbors.", c => tileIn("n-1762"), 64),
+  A("bronze", "Three's a crowd", "Make a 24 in Tribonacci.", c => tileIn("trib-1705"), 24),
+  A("bronze", "Prime time", "Make a 100 in Primes & squares.", c => tileIn("ps-576"), 100),
+  A("bronze", "Waste management", "Make a 128 in Garbage 512.", c => tileIn("g-512"), 128),
+  A("bronze", "Sideways", "Play a diagonal mode.", c => triedAny(["diag-sw", "diag-bt", "diag-ex"])),
+  A("bronze", "Upside down", "Play an inverted mode.", c => triedAny(["inv-256", "inv-512", "inv-1024", "inv-2048"])),
+  A("bronze", "Team player", "Play Cooperative 2048.", c => triedAny(["coop-2048"])),
+  A("bronze", "Rivalry", "Play Competitive 2048.", c => triedAny(["vs-2048"])),
+  A("bronze", "Insert coin", "Play Arcade.", c => triedAny(["arcade"])),
+  A("bronze", "Against the clock", "Play Arcade 2.", c => triedAny(["arcade2"])),
+  A("bronze", "Combo", "Make 3 merges in one move.", c => cnt.bigMove, 3),
+  A("bronze", "No finish line", "Play an endless mode.", c => triedAny(visModes().filter(m => m.endless).map(m => m.id))),
+  A("silver", "Almost there", "Make a 1024 in Regular 2048.", c => tileIn("2048"), 1024),
+  A("silver", "2048!", "Win Regular 2048.", c => winsIn("2048")),
+  A("silver", "On a roll", "Win 5 games.", c => c.wins, 5),
+  A("silver", "Versatile", "Win 5 different modes.", c => c.modesWon, 5),
+  A("silver", "Well rounded", "Win 10 different modes.", c => c.modesWon, 10),
+  A("silver", "Five figures", "Score 10,000 in one game.", c => c.bestGame, 10000),
+  A("silver", "Savings account", "Score 100,000 points in total.", c => cnt.score, 100000),
+  A("silver", "Marathon", "Make 10,000 moves in total.", c => cnt.moves, 10000),
+  A("silver", "Merge machine", "Make 5,000 merges in total.", c => cnt.merges, 5000),
+  A("silver", "Big combo", "Make 4 merges in one move.", c => cnt.bigMove, 4),
+  A("silver", "Honour roll", "Pass 25 tests.", c => c.tests, 25),
+  A("silver", "Classic scholar", "Pass all 30 classic 2048 tests.", c => c.classic, 30),
+  A("silver", "Puzzle box", "Pass 10 puzzle tests.", c => c.puzzle, 10),
+  A("silver", "Quiz master", "Pass 20 quiz tests.", c => c.quiz, 20),
+  A("silver", "Power of three", "Win Powers of 3.", c => winsIn("b3-2187")),
+  A("silver", "Fibonacci finish", "Win Fibonacci.", c => winsIn("fib-2584")),
+  A("silver", "Four of a kind", "Win Powers of 4.", c => winsIn("b4-1024")),
+  A("silver", "Do-over", "Win Undo 2048.", c => winsIn("undo-2048")),
+  A("silver", "Time traveller", "Undo 500 moves.", c => cnt.undos, 500),
+  A("silver", "Arcade regular", "Clear 6 Arcade stages in a run.", c => cnt.arcStage, 6),
+  A("silver", "Quick hands", "Reach 6,000 time points in Arcade 2.", c => st("arcade2").best, 6000),
+  A("silver", "Dream team", "Win Cooperative 2048.", c => winsIn("coop-2048")),
+  A("silver", "Head to head", "Win a game of Competitive 2048.", c => winsIn("vs-2048")),
+  A("silver", "Off the grid", "Win a diagonal mode.", c => anyWin(["diag-sw", "diag-bt", "diag-ex"])),
+  A("silver", "Mirror mind", "Win Inverted, easy.", c => winsIn("inv-256")),
+  A("silver", "Room to grow", "Make a 4096 in Large board 65536.", c => tileIn("5x5-65536"), 4096),
+  A("silver", "Infinite road", "Make a 500 or more in an endless mode.", c => c.endTile, 500),
+  A("silver", "Pentagon", "Make a tile of 70 or more in PENGAT.", c => tileIn("pengat"), 70),
+  A("silver", "Square deal", "Make a tile of 81 or more in Three-tile SQUART.", c => tileIn("squart3"), 81),
+  A("silver", "Dabbler", "Play 50 different modes.", c => c.tried, 50),
+  A("gold", "Beyond 2048", "Make a 4096 in Regular 2048.", c => tileIn("2048"), 4096),
+  A("gold", "Harder goal", "Win Harder 4096.", c => winsIn("4096")),
+  A("gold", "Jack of all modes", "Win 25 different modes.", c => c.modesWon, 25),
+  A("gold", "Winning streak", "Win 25 games.", c => c.wins, 25),
+  A("gold", "High roller", "Score 50,000 in one game.", c => c.bestGame, 50000),
+  A("gold", "Millionaire", "Score 1,000,000 points in total.", c => cnt.score, 1000000),
+  A("gold", "Ultramarathon", "Make 50,000 moves in total.", c => cnt.moves, 50000),
+  A("gold", "Chain reaction", "Make 6 merges in one move.", c => cnt.bigMove, 6),
+  A("gold", "Dean's list", "Pass 50 tests.", c => c.tests, 50),
+  A("gold", "Puzzle king", "Pass all 36 puzzle tests.", c => c.puzzle, 36),
+  A("gold", "Know-it-all", "Pass all 38 quiz tests.", c => c.quiz, 38),
+  A("gold", "Boss slayer", "Beat Arcade, boss included.", c => winsIn("arcade")),
+  A("gold", "Finalist", "Reach 12,000 time points in Arcade 2.", c => st("arcade2").best, 12000),
+  A("gold", "Three to merge", "Win Harder 2048.", c => winsIn("h-2048")),
+  A("gold", "High five", "Win Powers of 5.", c => winsIn("b5-3125")),
+  A("gold", "Pell-mell", "Win Pell.", c => winsIn("pell-2378")),
+  A("gold", "Through the looking glass", "Win Inverted, normal.", c => winsIn("inv-512")),
+  A("gold", "Corner to corner", "Win Diagonal only.", c => winsIn("diag-ex")),
+  A("gold", "Squeezed", "Win Small, harder 256 on 3×3.", c => winsIn("3x3-256")),
+  A("gold", "Globetrotter", "Play 100 different modes.", c => c.tried, 100),
+  A("plat", "Eight thousand", "Make an 8192 in Regular 2048.", c => tileIn("2048"), 8192),
+  A("plat", "Centurion", "Win 100 games.", c => c.wins, 100),
+  A("plat", "Grandmaster", "Win 75 different modes.", c => c.modesWon, 75),
+  A("plat", "Valedictorian", "Pass all 100 tests.", c => c.tests, 100),
+  A("plat", "Six figures", "Score 100,000 in one game.", c => c.bestGame, 100000),
+  A("plat", "Max effort", "Clear the Arcade 2 finale on Max Hard.", c => cnt.arc2.max ? 1 : 0),
+  A("plat", "Brutal", "Win Inverted, brutal.", c => winsIn("inv-2048")),
+  A("plat", "Elite", "Win Elite 8192.", c => winsIn("el-8192")),
+  A("plat", "Merge legend", "Make 100,000 merges in total.", c => cnt.merges, 100000),
+  A("plat", "Completionist", "Unlock the other 99 achievements.", () => Object.keys(achGot).filter(k => +k !== 99).length, 99)
+].map((a, i) => ({ ...a, id: i }));
+function bump(key, n = 1) { cnt[key] = (cnt[key] || 0) + n; achSoon(); }
+let achTimer = 0;
+function achSoon() { if (!achTimer) achTimer = setTimeout(() => { achTimer = 0; checkAch(); }, 60); }
+function checkAch() {
+  store.set(KEY_CNT, cnt);
+  const c = ACTX(), fresh = [];
+  for (let pass = 0; pass < 2; pass++) ACHS.forEach(a => { if (!achGot[a.id] && a.val(c) >= a.goal) { achGot[a.id] = Date.now(); fresh.push(a); } });
+  if (!fresh.length) return;
+  store.set(KEY_ACH, achGot);
+  if (fresh.length > 3) toast({ r: fresh.some(a => a.r === "plat") ? "plat" : fresh.some(a => a.r === "gold") ? "gold" : "silver", name: `${fresh.length} achievements unlocked`, multi: true });
+  else fresh.forEach((a, i) => setTimeout(() => toast(a), i * 1400));
+  if (!$("ach").hidden) renderAch();
+}
+function toast(a) {
+  const el = document.createElement("div");
+  el.className = "toast " + RARITY[a.r][1];
+  el.setAttribute("role", "status");
+  el.innerHTML = `<span class="medal"></span><span>${a.multi ? `<b>${esc(a.name)}.</b> See Achievements.` : `<b>${RARITY[a.r][0]} achievement:</b> ${esc(a.name)}`}</span>`;
+  let wrap = document.querySelector(".toast-wrap");
+  if (!wrap) { wrap = document.createElement("div"); wrap.className = "toast-wrap"; document.body.appendChild(wrap); }
+  wrap.appendChild(el);
+  setTimeout(() => el.remove(), 3200);
+}
+let achFilter = "all";
+function renderAch() {
+  const c = ACTX(), got = ACHS.filter(a => achGot[a.id]).length;
+  const by = r => `${ACHS.filter(a => a.r === r && achGot[a.id]).length} of ${ACHS.filter(a => a.r === r).length}`;
+  const list = ACHS.filter(a => achFilter === "all" || (achFilter === "got" ? achGot[a.id] : achFilter === "locked" ? !achGot[a.id] : a.r === achFilter));
+  const fmt = n => Math.floor(n).toLocaleString();
+  $("achBody").innerHTML = `<section><h4>Achievements · ${got} of ${ACHS.length}</h4>
+    <div class="ach-sum">${Object.entries(RARITY).map(([r, [n, cl]]) => `<span class="${cl}"><span class="rt">${n}</span> ${by(r)}</span>`).join("")}</div></section>
+    <div class="learn-tabs">${[["all", "All"], ["got", "Unlocked"], ["locked", "Locked"], ["bronze", "Bronze"], ["silver", "Silver"], ["gold", "Gold"], ["plat", "Platinum"]].map(([k, l]) => `<button data-af="${k}" aria-selected="${achFilter === k}">${l}</button>`).join("")}</div>
+    <div class="ach-list">${list.map(a => { const on = !!achGot[a.id], v = Math.min(a.val(c), a.goal);
+      return `<div class="ach ${RARITY[a.r][1]}${on ? "" : " locked"}"><span class="medal">${on ? "★" : ""}</span>
+        <span class="rt">${RARITY[a.r][0]}</span><b>${esc(a.name)}</b><span class="ad">${esc(a.desc)}${on ? ` Unlocked ${new Date(achGot[a.id]).toLocaleDateString()}.` : a.goal > 1 ? ` ${fmt(v)} of ${fmt(a.goal)}.` : ""}</span>
+        ${!on && a.goal > 1 ? `<span></span><span class="bar"><i style="width:${(100 * v / a.goal).toFixed(1)}%"></i></span>` : ""}</div>`; }).join("")}</div>`;
+  $("achBody").querySelectorAll("[data-af]").forEach(b => b.onclick = () => { achFilter = b.dataset.af; renderAch(); });
 }
 // ---------- Learn panel ----------
 let learnTab = "beginner", quizN = 0, testFilter = "all", lookupId = "2048";
@@ -2402,6 +2712,7 @@ const LESSONS = {
 };
 function renderLearn() {
   const tabs = [["beginner", "Beginner"], ["intermediate", "Intermediate"], ["advanced", "Advanced"], ["rulesets", "Rulesets"], ["tests", "Tests"]];
+  cnt.tabs[learnTab] = 1; achSoon();
   $("learnTabs").innerHTML = tabs.map(([k, l]) => `<button role="tab" data-tab="${k}" aria-selected="${learnTab === k}">${l}</button>`).join("");
   const body = $("learnBody");
   body.className = "lesson";
@@ -2444,6 +2755,7 @@ function jumpTo(i) {
   if (!m.undo || !g.timeline) return;
   i = Math.max(0, Math.min(g.timeline.length - 1, i));
   if (i === g.tpos) return;
+  if (i < g.tpos) bump("undos", g.tpos - i);
   const sn = g.timeline[i];
   g.tpos = i;
   Object.assign(g, { tiles: sn.t.map(([r, c, v]) => ({ id: nextId++, v, r, c, born: sn.n })), score: sn.s, moves: sn.n, won: sn.w, keepGoing: sn.k, over: sn.o, made: sn.d.slice() });
@@ -2464,7 +2776,7 @@ function renderUndo(g, m) {
 }
 // ---------- Tests ----------
 const testsDone = () => store.get(KEY_TESTS) || {};
-function markTest(n) { const d = testsDone(); d[n] = true; store.set(KEY_TESTS, d); }
+function markTest(n) { const d = testsDone(); d[n] = true; store.set(KEY_TESTS, d); achSoon(); }
 function startTest(n) {
   const t = TESTS[n - 1], run = { n, phase: "play" };
   configureTest(run);
@@ -2504,6 +2816,7 @@ function renderTestOverlay(g) {
 function arcadeClear(g) {
   const run = g.arcade;
   run.runScore += g.score; g.score = 0;
+  cnt.arcStage = Math.max(cnt.arcStage, run.stage === BOSS ? 13 : run.stage); achSoon();
   if (run.stage === BOSS) { run.phase = "done"; recordRun(g, "won"); }
   else run.phase = "clear";
 }
@@ -2596,7 +2909,7 @@ const describe = (id, g) => `${BY_ID[id].label} ${BY_ID[id].name} · ${g.score.t
 function fontFor(text, n) {
   const d = String(text).replace(/,/g, "").length;
   const base = d <= 2 ? 11 : d === 3 ? 9 : d === 4 ? 7.2 : d === 5 ? 5.8 : 4.8 * 6 / Math.max(6, d);
-  return (base * 4 / n).toFixed(2) + "cqi";
+  return `calc(${(base * 4 / n).toFixed(2)}cqi * var(--fw, 1))`;
 }
 function drawTiles(tEl, map, g, m, dying = [], instant = false) {
   dying.forEach(d => {
@@ -2695,6 +3008,7 @@ function movePlayer(i, dir) {
   const res = slide(g, m, dir);
   if (!res.moved) return;
   g.tiles = res.tiles; g.score += Math.round(res.gained); g.moves++;
+  cnt.modes[mode] = 1; cnt.moves++; cnt.merges += res.merges.length; cnt.score += Math.max(0, Math.round(res.gained)); cnt.bigMove = Math.max(cnt.bigMove, res.merges.length); achSoon();
   spawn(g, m);
   if (!canMove(g, m)) g.over = true;
   G.result = mpResult(G, m);
@@ -3041,7 +3355,7 @@ function renderSaves() {
   if (p) { $("prevCode").value = encode(mode, p); $("prevInfo").textContent = describe(mode, p); }
 }
 
-const PANELS = { picker: "modeBtn", settings: "settingsBtn", saves: "savesBtn", debugPanel: "debugBtn", learn: "learnBtn" };
+const PANELS = { picker: "modeBtn", settings: "settingsBtn", saves: "savesBtn", debugPanel: "debugBtn", learn: "learnBtn", ach: "achBtn" };
 function openPanel(name) {
   Object.entries(PANELS).forEach(([p, btn]) => {
     const open = p === name;
@@ -3053,6 +3367,7 @@ function openPanel(name) {
   if (name === "saves") { renderSaves(); setStatus(""); }
   if (name === "debugPanel") { fillDebug(); $("dbgStatus").textContent = ""; }
   if (name === "learn") renderLearn();
+  if (name === "ach") renderAch();
 }
 const togglePanel = name => openPanel($(name).hidden ? name : null);
 
@@ -3178,6 +3493,7 @@ async function copyText(textarea) {
   try {
     await navigator.clipboard.writeText(textarea.value);
     setStatus("Copied the code.", "ok");
+    bump("codes");
   } catch (e) {
     textarea.focus(); textarea.select();
     setStatus("The code is selected. Press Ctrl+C (or ⌘C) to copy it.");
@@ -3186,6 +3502,7 @@ async function copyText(textarea) {
 
 let downloads = null;
 async function saveTxt(id, g) {
+  bump("codes");
   if (!downloads) return;
   const m = BY_ID[id];
   const stamp = new Date().toISOString().slice(0, 16).replace(/[-:T]/g, "");
@@ -3329,6 +3646,8 @@ function start(hot) {
   $("debugBtn").hidden = !debugMode;
   $("debugBtn").addEventListener("click", () => togglePanel("debugPanel"));
   $("learnBtn").addEventListener("click", () => togglePanel("learn"));
+  $("achBtn").addEventListener("click", () => togglePanel("ach"));
+  achSoon();
   $("undoBtn").addEventListener("click", () => jumpTo(games[mode].tpos - 1));
   $("redoBtn").addEventListener("click", () => jumpTo(games[mode].tpos + 1));
   $("undoRange").addEventListener("input", e => jumpTo(+e.target.value));
@@ -3358,7 +3677,9 @@ function start(hot) {
     $("dbgStatus").className = "status ok";
     $("dbgStatus").textContent = "This mode is back to its normal settings. A new game started.";
   });
-  $("soundSet").addEventListener("change", e => { settings.soundSet = e.target.value; saveSettings(); sfx.merge(16, M()); setTimeout(() => sfx.merge(128, M()), 220); });
+  $("fontSet").value = ["classic", "rounded", "serif", "mono"].includes(settings.font) ? settings.font : "classic";
+  $("fontSet").addEventListener("change", e => { settings.font = e.target.value; saveSettings(); applyFont(); bump("font"); });
+  $("soundSet").addEventListener("change", e => { settings.soundSet = e.target.value; cnt.sounds[e.target.value] = 1; cnt.sounds.original = 1; achSoon(); saveSettings(); sfx.merge(16, M()); setTimeout(() => sfx.merge(128, M()), 220); });
 
   // custom board size (Dynamic goals)
   ["dimW", "dimH"].forEach(id => $(id).addEventListener("input", updateDimGoal));
